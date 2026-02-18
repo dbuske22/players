@@ -5,9 +5,16 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
 import { ErrorBoundary } from './error-boundary';
+import { useEffect } from 'react';
+import { useAuthStore } from '@/lib/store';
 
 export default function RootLayout() {
   const { colorScheme } = useColorScheme();
+  const initialize = useAuthStore((s) => s.initialize);
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
 
   return (
     <ErrorBoundary>
