@@ -2,298 +2,605 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
+import Stripe from 'stripe';
+import QRCode from 'qrcode';
+import { db } from './db.js';
+import { signToken, authMiddleware, adminMiddleware, type JWTPayload } from './auth.js';
+import { sendPurchaseConfirmation, sendBuildApprovedEmail } from './email.js';
 
 const app = new Hono();
-
-app.use(
-  '*',
-  cors({
-    credentials: true,
-    origin: (origin) => origin || '*',
-  })
-);
-
-// ─── In-memory data store ───────────────────────────────────────────────────
-
-type Position = 'PG' | 'SG' | 'SF' | 'PF' | 'C';
-
-interface Build {
-  id: string;
-  sellerId: string;
-  sellerName: string;
-  name: string;
-  position: Position;
-  height: string;
-  weight: number;
-  attributes: {
-    speed: number;
-    acceleration: number;
-    verticalLeap: number;
-    strength: number;
-    stamina: number;
-    ballHandling: number;
-    passAccuracy: number;
-    threePointer: number;
-    midRange: number;
-    layup: number;
-    dunkPower: number;
-    interiorDefense: number;
-    perimeterDefense: number;
-    steal: number;
-    block: number;
-    offensiveRebound: number;
-    defensiveRebound: number;
-  };
-  overallRating: number;
-  archetype: string;
-  price: number;
-  description: string;
-  sold: boolean;
-  createdAt: string;
-}
-
-interface Purchase {
-  id: string;
-  buildId: string;
-  buyerId: string;
-  buyerName: string;
-  price: number;
-  purchasedAt: string;
-}
-
-const builds: Build[] = [
-  {
-    id: 'b1',
-    sellerId: 'user2',
-    sellerName: 'KingCourt99',
-    name: 'Glass Cleaner Beast',
-    position: 'C',
-    height: "7'0\"",
-    weight: 255,
-    attributes: {
-      speed: 42, acceleration: 44, verticalLeap: 75, strength: 90,
-      stamina: 88, ballHandling: 30, passAccuracy: 45, threePointer: 25,
-      midRange: 40, layup: 72, dunkPower: 88, interiorDefense: 95,
-      perimeterDefense: 55, steal: 48, block: 92, offensiveRebound: 92,
-      defensiveRebound: 95,
-    },
-    overallRating: 93,
-    archetype: 'Glass Cleaner',
-    price: 25000,
-    description: 'Dominant big man. Boards everything, protects the rim. Perfect for paint presence.',
-    sold: false,
-    createdAt: '2026-02-10T10:00:00Z',
-  },
-  {
-    id: 'b2',
-    sellerId: 'user3',
-    sellerName: 'DrizzyCourt',
-    name: 'Sharpshooter SG',
-    position: 'SG',
-    height: "6'5\"",
-    weight: 195,
-    attributes: {
-      speed: 78, acceleration: 80, verticalLeap: 72, strength: 60,
-      stamina: 85, ballHandling: 82, passAccuracy: 72, threePointer: 99,
-      midRange: 96, layup: 75, dunkPower: 65, interiorDefense: 48,
-      perimeterDefense: 78, steal: 70, block: 42, offensiveRebound: 48,
-      defensiveRebound: 58,
-    },
-    overallRating: 95,
-    archetype: 'Pure Sharpshooter',
-    price: 35000,
-    description: 'Limitless range, green window on every spot. Catch-and-shoot specialist.',
-    sold: false,
-    createdAt: '2026-02-11T14:00:00Z',
-  },
-  {
-    id: 'b3',
-    sellerId: 'user4',
-    sellerName: 'PGElite2K',
-    name: 'Playmaking PG',
-    position: 'PG',
-    height: "6'2\"",
-    weight: 185,
-    attributes: {
-      speed: 92, acceleration: 94, verticalLeap: 78, strength: 58,
-      stamina: 88, ballHandling: 98, passAccuracy: 97, threePointer: 82,
-      midRange: 80, layup: 88, dunkPower: 70, interiorDefense: 42,
-      perimeterDefense: 72, steal: 78, block: 38, offensiveRebound: 44,
-      defensiveRebound: 50,
-    },
-    overallRating: 96,
-    archetype: 'Playmaker',
-    price: 45000,
-    description: 'Elite court vision and dribble moves. Can run any offense. Top-tier assists.',
-    sold: false,
-    createdAt: '2026-02-12T09:00:00Z',
-  },
-  {
-    id: 'b4',
-    sellerId: 'user5',
-    sellerName: 'SlasherKing',
-    name: 'Athletic Finisher SF',
-    position: 'SF',
-    height: "6'7\"",
-    weight: 215,
-    attributes: {
-      speed: 88, acceleration: 90, verticalLeap: 92, strength: 75,
-      stamina: 90, ballHandling: 78, passAccuracy: 68, threePointer: 72,
-      midRange: 78, layup: 95, dunkPower: 96, interiorDefense: 65,
-      perimeterDefense: 80, steal: 72, block: 60, offensiveRebound: 70,
-      defensiveRebound: 72,
-    },
-    overallRating: 94,
-    archetype: 'Slasher',
-    price: 30000,
-    description: 'Explosive athlete who finishes above the rim. Drives and dunks on everyone.',
-    sold: false,
-    createdAt: '2026-02-13T16:00:00Z',
-  },
-];
-
-const purchases: Purchase[] = [];
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function generateId() {
-  return Math.random().toString(36).slice(2, 10);
-}
-
-// ─── Routes ─────────────────────────────────────────────────────────────────
-
-app.get('/', (c) => c.json({ message: '2K26 Builds Marketplace API' }));
-
-// GET all listings (available builds)
-app.get('/builds', (c) => {
-  const position = c.req.query('position');
-  const maxPrice = c.req.query('maxPrice');
-  const sort = c.req.query('sort') || 'newest';
-
-  let results = builds.filter((b) => !b.sold);
-
-  if (position) {
-    results = results.filter((b) => b.position === position);
-  }
-  if (maxPrice) {
-    results = results.filter((b) => b.price <= parseInt(maxPrice));
-  }
-
-  if (sort === 'price_asc') results.sort((a, b) => a.price - b.price);
-  else if (sort === 'price_desc') results.sort((a, b) => b.price - a.price);
-  else if (sort === 'rating') results.sort((a, b) => b.overallRating - a.overallRating);
-  else results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-  return c.json(results);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder', {
+  apiVersion: '2025-02-24.acacia',
 });
 
-// GET single build
-app.get('/builds/:id', (c) => {
-  const build = builds.find((b) => b.id === c.req.param('id'));
-  if (!build) return c.json({ error: 'Build not found' }, 404);
-  return c.json(build);
+const PLATFORM_FEE = 0.30; // 30%
+
+app.use('*', cors({ credentials: true, origin: (origin) => origin || '*' }));
+
+// ─── Health ──────────────────────────────────────────────────────────────────
+app.get('/', (c) => c.json({ message: 'Sports Builds Market API v1.0' }));
+
+// ─── AUTH ────────────────────────────────────────────────────────────────────
+const signupSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  username: z.string().min(3).max(30),
+  role: z.enum(['buyer', 'seller']).default('buyer'),
 });
 
-// POST create a listing
-const createBuildSchema = z.object({
-  sellerId: z.string().min(1),
-  sellerName: z.string().min(1),
-  name: z.string().min(1),
-  position: z.enum(['PG', 'SG', 'SF', 'PF', 'C']),
-  height: z.string().min(1),
-  weight: z.number().int().min(100).max(350),
-  attributes: z.object({
-    speed: z.number().int().min(25).max(99),
-    acceleration: z.number().int().min(25).max(99),
-    verticalLeap: z.number().int().min(25).max(99),
-    strength: z.number().int().min(25).max(99),
-    stamina: z.number().int().min(25).max(99),
-    ballHandling: z.number().int().min(25).max(99),
-    passAccuracy: z.number().int().min(25).max(99),
-    threePointer: z.number().int().min(25).max(99),
-    midRange: z.number().int().min(25).max(99),
-    layup: z.number().int().min(25).max(99),
-    dunkPower: z.number().int().min(25).max(99),
-    interiorDefense: z.number().int().min(25).max(99),
-    perimeterDefense: z.number().int().min(25).max(99),
-    steal: z.number().int().min(25).max(99),
-    block: z.number().int().min(25).max(99),
-    offensiveRebound: z.number().int().min(25).max(99),
-    defensiveRebound: z.number().int().min(25).max(99),
+app.post('/auth/signup', zValidator('json', signupSchema), async (c) => {
+  const { email, password, username, role } = c.req.valid('json');
+  const hash = await bcrypt.hash(password, 12);
+  const { data, error } = await db
+    .from('users')
+    .insert({ email, password_hash: hash, username, role })
+    .select('id, email, username, role, playstyle_vector, playstyle_labels, stripe_onboarded, avatar_url, total_earnings, total_spent, created_at')
+    .single();
+  if (error) {
+    if (error.code === '23505') return c.json({ error: 'Email or username already taken' }, 400);
+    return c.json({ error: error.message }, 400);
+  }
+  const token = signToken({ userId: data.id, email: data.email, role: data.role, username: data.username });
+  return c.json({ token, user: data }, 201);
+});
+
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string(),
+});
+
+app.post('/auth/login', zValidator('json', loginSchema), async (c) => {
+  const { email, password } = c.req.valid('json');
+  const { data: user } = await db.from('users').select('*').eq('email', email).single();
+  if (!user) return c.json({ error: 'Invalid credentials' }, 401);
+  const valid = await bcrypt.compare(password, user.password_hash);
+  if (!valid) return c.json({ error: 'Invalid credentials' }, 401);
+  const token = signToken({ userId: user.id, email: user.email, role: user.role, username: user.username });
+  const { password_hash: _, ...safeUser } = user;
+  return c.json({ token, user: safeUser });
+});
+
+app.get('/auth/me', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as JWTPayload;
+  const { data: user } = await db
+    .from('users')
+    .select('id, email, username, role, playstyle_vector, playstyle_labels, stripe_onboarded, stripe_account_id, avatar_url, total_earnings, total_spent, created_at')
+    .eq('id', userId)
+    .single();
+  if (!user) return c.json({ error: 'User not found' }, 404);
+  return c.json(user);
+});
+
+// ─── PLAYSTYLE SCAN ──────────────────────────────────────────────────────────
+const playstyleSchema = z.object({
+  vector: z.array(z.number().min(1).max(10)).length(8),
+  labels: z.object({
+    shootVsDrive: z.number(),
+    soloVsSquad: z.number(),
+    defenseSkill: z.number(),
+    reactionTiming: z.number(),
+    offensiveStyle: z.number(),
+    physicalPlay: z.number(),
+    pacePreference: z.number(),
+    consistencyVsHighRisk: z.number(),
   }),
+});
+
+app.post('/users/playstyle', authMiddleware, zValidator('json', playstyleSchema), async (c) => {
+  const { userId } = c.get('user') as JWTPayload;
+  const { vector, labels } = c.req.valid('json');
+  const { data, error } = await db
+    .from('users')
+    .update({ playstyle_vector: vector, playstyle_labels: labels, updated_at: new Date().toISOString() })
+    .eq('id', userId)
+    .select('id, playstyle_vector, playstyle_labels')
+    .single();
+  if (error) return c.json({ error: error.message }, 400);
+  return c.json(data);
+});
+
+// ─── STRIPE CONNECT ONBOARDING ───────────────────────────────────────────────
+app.post('/stripe/connect', authMiddleware, async (c) => {
+  const { userId, email } = c.get('user') as JWTPayload;
+  const { data: user } = await db.from('users').select('stripe_account_id').eq('id', userId).single();
+
+  let accountId = user?.stripe_account_id;
+  if (!accountId) {
+    try {
+      const account = await stripe.accounts.create({ type: 'express', email });
+      accountId = account.id;
+      await db.from('users').update({ stripe_account_id: accountId }).eq('id', userId);
+    } catch {
+      return c.json({ error: 'Stripe unavailable in test mode without valid key' }, 200);
+    }
+  }
+
+  try {
+    const origin = c.req.header('origin') || 'http://localhost:8081';
+    const link = await stripe.accountLinks.create({
+      account: accountId,
+      refresh_url: `${origin}/seller/onboarding?refresh=true`,
+      return_url: `${origin}/seller/onboarding?success=true`,
+      type: 'account_onboarding',
+    });
+    return c.json({ url: link.url });
+  } catch {
+    return c.json({ error: 'Could not create onboarding link' }, 500);
+  }
+});
+
+app.get('/stripe/connect/status', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as JWTPayload;
+  const { data: user } = await db.from('users').select('stripe_account_id, stripe_onboarded').eq('id', userId).single();
+  if (!user?.stripe_account_id) return c.json({ onboarded: false });
+  try {
+    const account = await stripe.accounts.retrieve(user.stripe_account_id);
+    const onboarded = account.charges_enabled && account.details_submitted;
+    if (onboarded && !user.stripe_onboarded) {
+      await db.from('users').update({ stripe_onboarded: true }).eq('id', userId);
+    }
+    return c.json({ onboarded, account_id: user.stripe_account_id });
+  } catch {
+    return c.json({ onboarded: user.stripe_onboarded });
+  }
+});
+
+// ─── BUILDS ──────────────────────────────────────────────────────────────────
+app.get('/builds', async (c) => {
+  const gameType = c.req.query('game_type');
+  const position = c.req.query('position');
+  const minPrice = c.req.query('min_price');
+  const maxPrice = c.req.query('max_price');
+  const sort = c.req.query('sort') || 'newest';
+  const search = c.req.query('search');
+  const featured = c.req.query('featured');
+
+  let query = db
+    .from('builds')
+    .select(`
+      id, title, game_type, position, archetype, description, price,
+      build_vector, attributes, badges, performance, status, featured,
+      view_count, created_at,
+      seller:seller_id(id, username, avatar_url, stripe_onboarded)
+    `)
+    .eq('status', 'active');
+
+  if (gameType) query = query.eq('game_type', gameType);
+  if (position) query = query.ilike('position', `%${position}%`);
+  if (minPrice) query = query.gte('price', parseFloat(minPrice));
+  if (maxPrice) query = query.lte('price', parseFloat(maxPrice));
+  if (featured === 'true') query = query.eq('featured', true);
+  if (search) query = query.or(`title.ilike.%${search}%,archetype.ilike.%${search}%,description.ilike.%${search}%`);
+
+  if (sort === 'price_asc') query = query.order('price', { ascending: true });
+  else if (sort === 'price_desc') query = query.order('price', { ascending: false });
+  else if (sort === 'popular') query = query.order('view_count', { ascending: false });
+  else query = query.order('created_at', { ascending: false });
+
+  const { data, error } = await query;
+  if (error) return c.json({ error: error.message }, 500);
+
+  // Attach avg rating
+  const buildIds = (data || []).map((b) => b.id);
+  let ratingsMap: Record<string, number> = {};
+  if (buildIds.length > 0) {
+    const { data: reviews } = await db
+      .from('reviews')
+      .select('build_id, rating')
+      .in('build_id', buildIds);
+    if (reviews) {
+      const sums: Record<string, { sum: number; count: number }> = {};
+      reviews.forEach((r) => {
+        if (!sums[r.build_id]) sums[r.build_id] = { sum: 0, count: 0 };
+        sums[r.build_id].sum += r.rating;
+        sums[r.build_id].count++;
+      });
+      Object.entries(sums).forEach(([id, { sum, count }]) => {
+        ratingsMap[id] = Math.round((sum / count) * 10) / 10;
+      });
+    }
+  }
+
+  const enriched = (data || []).map((b) => ({ ...b, avg_rating: ratingsMap[b.id] || null }));
+  return c.json(enriched);
+});
+
+app.get('/builds/:id', async (c) => {
+  const { data, error } = await db
+    .from('builds')
+    .select(`
+      *, seller:seller_id(id, username, avatar_url, stripe_onboarded, total_earnings)
+    `)
+    .eq('id', c.req.param('id'))
+    .single();
+  if (error || !data) return c.json({ error: 'Build not found' }, 404);
+
+  // Increment view count
+  await db.from('builds').update({ view_count: (data.view_count || 0) + 1 }).eq('id', data.id);
+
+  // Get reviews
+  const { data: reviews } = await db
+    .from('reviews')
+    .select('*, reviewer:buyer_id(username, avatar_url)')
+    .eq('build_id', data.id)
+    .order('created_at', { ascending: false });
+
+  const avgRating = reviews && reviews.length > 0
+    ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10
+    : null;
+
+  return c.json({ ...data, reviews: reviews || [], avg_rating: avgRating });
+});
+
+const createBuildSchema = z.object({
+  title: z.string().min(3),
+  game_type: z.enum(['basketball', 'football', 'hockey']),
+  position: z.string().min(1),
   archetype: z.string().min(1),
-  price: z.number().int().min(1000),
-  description: z.string().min(1),
+  description: z.string().optional(),
+  price: z.number().min(1).max(10),
+  import_code: z.string().optional(),
+  preview_url: z.string().optional(),
+  build_vector: z.array(z.number().min(1).max(10)).length(8).optional(),
+  attributes: z.array(z.object({ key: z.string(), value: z.union([z.string(), z.number()]) })),
+  badges: z.array(z.string()),
+  performance: z.object({
+    win_rate: z.number().min(0).max(100),
+    mode_played: z.string(),
+    avg_grade: z.string(),
+    shot_efficiency: z.number().min(0).max(100),
+    patch_version: z.string(),
+  }),
 });
 
-app.post('/builds', zValidator('json', createBuildSchema), (c) => {
-  const data = c.req.valid('json');
-  const attrs = data.attributes;
-  const overallRating = Math.round(
-    (attrs.speed + attrs.acceleration + attrs.verticalLeap + attrs.strength +
-      attrs.stamina + attrs.ballHandling + attrs.passAccuracy + attrs.threePointer +
-      attrs.midRange + attrs.layup + attrs.dunkPower + attrs.interiorDefense +
-      attrs.perimeterDefense + attrs.steal + attrs.block +
-      attrs.offensiveRebound + attrs.defensiveRebound) / 17
-  );
+app.post('/builds', authMiddleware, zValidator('json', createBuildSchema), async (c) => {
+  const user = c.get('user') as JWTPayload;
+  const body = c.req.valid('json');
 
-  const newBuild: Build = {
-    id: generateId(),
-    ...data,
-    overallRating,
-    sold: false,
-    createdAt: new Date().toISOString(),
-  };
-  builds.push(newBuild);
-  return c.json(newBuild, 201);
+  const { data, error } = await db
+    .from('builds')
+    .insert({
+      seller_id: user.userId,
+      ...body,
+      status: 'pending',
+    })
+    .select('*')
+    .single();
+  if (error) return c.json({ error: error.message }, 400);
+  return c.json(data, 201);
 });
 
-// DELETE remove a listing (seller only)
-app.delete('/builds/:id', (c) => {
-  const idx = builds.findIndex((b) => b.id === c.req.param('id'));
-  if (idx === -1) return c.json({ error: 'Build not found' }, 404);
-  builds.splice(idx, 1);
+app.put('/builds/:id', authMiddleware, async (c) => {
+  const user = c.get('user') as JWTPayload;
+  const body = await c.req.json();
+  const { data: build } = await db.from('builds').select('seller_id').eq('id', c.req.param('id')).single();
+  if (!build) return c.json({ error: 'Build not found' }, 404);
+  if (build.seller_id !== user.userId && user.role !== 'admin') return c.json({ error: 'Forbidden' }, 403);
+
+  const { data, error } = await db
+    .from('builds')
+    .update({ ...body, updated_at: new Date().toISOString() })
+    .eq('id', c.req.param('id'))
+    .select('*')
+    .single();
+  if (error) return c.json({ error: error.message }, 400);
+  return c.json(data);
+});
+
+app.delete('/builds/:id', authMiddleware, async (c) => {
+  const user = c.get('user') as JWTPayload;
+  const { data: build } = await db.from('builds').select('seller_id, status').eq('id', c.req.param('id')).single();
+  if (!build) return c.json({ error: 'Build not found' }, 404);
+  if (build.seller_id !== user.userId && user.role !== 'admin') return c.json({ error: 'Forbidden' }, 403);
+  if (build.status === 'sold') return c.json({ error: 'Cannot delete sold build' }, 400);
+  await db.from('builds').delete().eq('id', c.req.param('id'));
   return c.json({ success: true });
 });
 
-// POST purchase a build
-const purchaseSchema = z.object({
-  buyerId: z.string().min(1),
-  buyerName: z.string().min(1),
-});
+// ─── QR CODE ─────────────────────────────────────────────────────────────────
+app.get('/builds/:id/qr', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as JWTPayload;
+  // Check they own this purchase
+  const { data: purchase } = await db
+    .from('purchases')
+    .select('build_id')
+    .eq('buyer_id', userId)
+    .eq('build_id', c.req.param('id'))
+    .single();
+  if (!purchase) return c.json({ error: 'Purchase not found' }, 403);
 
-app.post('/builds/:id/purchase', zValidator('json', purchaseSchema), (c) => {
-  const build = builds.find((b) => b.id === c.req.param('id'));
+  const { data: build } = await db.from('builds').select('import_code, title').eq('id', c.req.param('id')).single();
   if (!build) return c.json({ error: 'Build not found' }, 404);
-  if (build.sold) return c.json({ error: 'Build already sold' }, 400);
 
-  build.sold = true;
-  const purchase: Purchase = {
-    id: generateId(),
-    buildId: build.id,
-    buyerId: c.req.valid('json').buyerId,
-    buyerName: c.req.valid('json').buyerName,
-    price: build.price,
-    purchasedAt: new Date().toISOString(),
+  const qrDataUrl = await QRCode.toDataURL(build.import_code || build.title, {
+    width: 300,
+    margin: 2,
+    color: { dark: '#1e1b4b', light: '#ffffff' },
+  });
+  return c.json({ qr: qrDataUrl, import_code: build.import_code });
+});
+
+// ─── PURCHASES / PAYMENTS ────────────────────────────────────────────────────
+app.post('/builds/:id/checkout', authMiddleware, async (c) => {
+  const { userId, email } = c.get('user') as JWTPayload;
+  const { data: build } = await db
+    .from('builds')
+    .select('*, seller:seller_id(id, username, email, stripe_account_id, stripe_onboarded)')
+    .eq('id', c.req.param('id'))
+    .single();
+
+  if (!build) return c.json({ error: 'Build not found' }, 404);
+  if (build.status !== 'active') return c.json({ error: 'Build is not available' }, 400);
+  if (build.seller_id === userId) return c.json({ error: 'Cannot buy your own build' }, 400);
+
+  const alreadyPurchased = await db.from('purchases').select('id').eq('buyer_id', userId).eq('build_id', build.id).single();
+  if (alreadyPurchased.data) return c.json({ error: 'Already purchased' }, 400);
+
+  const amountCents = Math.round(build.price * 100);
+  const platformFeeCents = Math.round(amountCents * PLATFORM_FEE);
+
+  const stripeKey = process.env.STRIPE_SECRET_KEY || '';
+  const hasValidStripeKey = stripeKey.startsWith('sk_') && stripeKey.length > 20 && !stripeKey.includes('placeholder');
+
+  if (!hasValidStripeKey) {
+    // Demo mode: complete purchase without Stripe
+    const { data: purchase } = await db
+      .from('purchases')
+      .insert({
+        buyer_id: userId,
+        build_id: build.id,
+        seller_id: build.seller_id,
+        amount: build.price,
+        platform_fee: build.price * PLATFORM_FEE,
+        seller_payout: build.price * (1 - PLATFORM_FEE),
+        status: 'completed',
+      })
+      .select('*')
+      .single();
+
+    await db.from('builds').update({ status: 'sold' }).eq('id', build.id);
+    await db.from('users').update({ total_spent: db.rpc as never }).eq('id', userId);
+
+    return c.json({ demo: true, purchase, message: 'Demo purchase completed (Stripe not configured)' });
+  }
+
+  // Real Stripe payment
+  const paymentIntentData: Stripe.PaymentIntentCreateParams = {
+    amount: amountCents,
+    currency: 'usd',
+    receipt_email: email,
+    metadata: { buildId: build.id, buyerId: userId, sellerId: build.seller_id },
   };
-  purchases.push(purchase);
-  return c.json(purchase, 201);
+
+  if (build.seller?.stripe_account_id && build.seller?.stripe_onboarded) {
+    paymentIntentData.application_fee_amount = platformFeeCents;
+    paymentIntentData.transfer_data = { destination: build.seller.stripe_account_id };
+  }
+
+  const intent = await stripe.paymentIntents.create(paymentIntentData);
+  return c.json({ client_secret: intent.client_secret, payment_intent_id: intent.id, amount: build.price });
 });
 
-// GET my listings (by sellerId)
-app.get('/users/:sellerId/builds', (c) => {
-  const myBuilds = builds.filter((b) => b.sellerId === c.req.param('sellerId'));
-  return c.json(myBuilds);
+app.post('/builds/:id/purchase/confirm', authMiddleware, async (c) => {
+  const { userId, email, username } = c.get('user') as JWTPayload;
+  const { payment_intent_id } = await c.req.json();
+
+  const { data: build } = await db
+    .from('builds')
+    .select('*, seller:seller_id(username, stripe_account_id)')
+    .eq('id', c.req.param('id'))
+    .single();
+  if (!build) return c.json({ error: 'Build not found' }, 404);
+
+  let intentStatus = 'succeeded';
+  let transferId: string | undefined;
+
+  if (payment_intent_id && !payment_intent_id.startsWith('demo_')) {
+    const intent = await stripe.paymentIntents.retrieve(payment_intent_id);
+    intentStatus = intent.status;
+    if (intentStatus !== 'succeeded') return c.json({ error: 'Payment not completed' }, 400);
+  }
+
+  const { data: purchase, error } = await db
+    .from('purchases')
+    .insert({
+      buyer_id: userId,
+      build_id: build.id,
+      seller_id: build.seller_id,
+      amount: build.price,
+      platform_fee: build.price * PLATFORM_FEE,
+      seller_payout: build.price * (1 - PLATFORM_FEE),
+      stripe_payment_intent_id: payment_intent_id,
+      stripe_transfer_id: transferId,
+      status: 'completed',
+    })
+    .select('*')
+    .single();
+  if (error) return c.json({ error: error.message }, 400);
+
+  await db.from('builds').update({ status: 'sold', updated_at: new Date().toISOString() }).eq('id', build.id);
+  await db.from('users').update({ total_spent: build.price }).eq('id', userId);
+  await db.from('users')
+    .update({ total_earnings: build.price * (1 - PLATFORM_FEE) })
+    .eq('id', build.seller_id);
+
+  // Send email
+  await sendPurchaseConfirmation({
+    buyerEmail: email,
+    buyerName: username,
+    buildTitle: build.title,
+    importCode: build.import_code || 'N/A',
+    amount: build.price,
+  });
+
+  return c.json(purchase);
 });
 
-// GET my purchases (by buyerId)
-app.get('/users/:buyerId/purchases', (c) => {
-  const myPurchases = purchases.filter((p) => p.buyerId === c.req.param('buyerId'));
-  const enriched = myPurchases.map((p) => ({
-    ...p,
-    build: builds.find((b) => b.id === p.buildId),
-  }));
-  return c.json(enriched);
+// ─── USER DASHBOARD ──────────────────────────────────────────────────────────
+app.get('/users/me/builds', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as JWTPayload;
+  const { data } = await db
+    .from('builds')
+    .select('*')
+    .eq('seller_id', userId)
+    .order('created_at', { ascending: false });
+  return c.json(data || []);
+});
+
+app.get('/users/me/purchases', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as JWTPayload;
+  const { data } = await db
+    .from('purchases')
+    .select('*, build:build_id(id, title, game_type, position, archetype, import_code, preview_url, attributes, badges, performance, price)')
+    .eq('buyer_id', userId)
+    .order('created_at', { ascending: false });
+  return c.json(data || []);
+});
+
+app.get('/users/me/earnings', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as JWTPayload;
+  const { data } = await db
+    .from('purchases')
+    .select('amount, platform_fee, seller_payout, created_at, build:build_id(title)')
+    .eq('seller_id', userId)
+    .order('created_at', { ascending: false });
+  const total = (data || []).reduce((s, p) => s + p.seller_payout, 0);
+  return c.json({ sales: data || [], total_earned: total });
+});
+
+// ─── REVIEWS ─────────────────────────────────────────────────────────────────
+const reviewSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().max(500).optional(),
+  purchase_id: z.string().uuid(),
+});
+
+app.post('/builds/:id/reviews', authMiddleware, zValidator('json', reviewSchema), async (c) => {
+  const { userId } = c.get('user') as JWTPayload;
+  const { rating, comment, purchase_id } = c.req.valid('json');
+
+  // Verify purchase
+  const { data: purchase } = await db
+    .from('purchases')
+    .select('id')
+    .eq('id', purchase_id)
+    .eq('buyer_id', userId)
+    .eq('build_id', c.req.param('id'))
+    .single();
+  if (!purchase) return c.json({ error: 'No valid purchase found' }, 403);
+
+  const existing = await db.from('reviews').select('id').eq('buyer_id', userId).eq('build_id', c.req.param('id')).single();
+  if (existing.data) return c.json({ error: 'Already reviewed' }, 400);
+
+  const { data, error } = await db
+    .from('reviews')
+    .insert({ build_id: c.req.param('id'), buyer_id: userId, purchase_id, rating, comment })
+    .select('*')
+    .single();
+  if (error) return c.json({ error: error.message }, 400);
+  return c.json(data, 201);
+});
+
+// ─── MODERATION FLAGS ────────────────────────────────────────────────────────
+app.post('/builds/:id/flag', authMiddleware, async (c) => {
+  const { userId } = c.get('user') as JWTPayload;
+  const { reason } = await c.req.json();
+  const { data, error } = await db
+    .from('moderation_flags')
+    .insert({ build_id: c.req.param('id'), flagged_by: userId, reason })
+    .select('*')
+    .single();
+  if (error) return c.json({ error: error.message }, 400);
+  return c.json(data, 201);
+});
+
+// ─── ADMIN ───────────────────────────────────────────────────────────────────
+app.use('/admin/*', authMiddleware, adminMiddleware);
+
+app.get('/admin/builds', async (c) => {
+  const status = c.req.query('status');
+  let query = db
+    .from('builds')
+    .select('*, seller:seller_id(username, email)')
+    .order('created_at', { ascending: false });
+  if (status) query = query.eq('status', status);
+  const { data } = await query;
+  return c.json(data || []);
+});
+
+app.post('/admin/builds/:id/approve', async (c) => {
+  const { data: build } = await db
+    .from('builds')
+    .update({ status: 'active', updated_at: new Date().toISOString() })
+    .eq('id', c.req.param('id'))
+    .select('*, seller:seller_id(username, email)')
+    .single();
+  if (!build) return c.json({ error: 'Not found' }, 404);
+
+  const seller = build.seller as { username: string; email: string } | null;
+  if (seller?.email) {
+    await sendBuildApprovedEmail({
+      sellerEmail: seller.email,
+      sellerName: seller.username,
+      buildTitle: build.title,
+    });
+  }
+  return c.json(build);
+});
+
+app.post('/admin/builds/:id/reject', async (c) => {
+  const { data } = await db
+    .from('builds')
+    .update({ status: 'rejected', updated_at: new Date().toISOString() })
+    .eq('id', c.req.param('id'))
+    .select('*')
+    .single();
+  return c.json(data);
+});
+
+app.get('/admin/flags', async (c) => {
+  const { data } = await db
+    .from('moderation_flags')
+    .select('*, build:build_id(title, game_type), reporter:flagged_by(username)')
+    .eq('resolved', false)
+    .order('created_at', { ascending: false });
+  return c.json(data || []);
+});
+
+app.post('/admin/flags/:id/resolve', async (c) => {
+  const user = c.get('user') as JWTPayload;
+  const { data } = await db
+    .from('moderation_flags')
+    .update({ resolved: true, resolved_by: user.userId })
+    .eq('id', c.req.param('id'))
+    .select('*')
+    .single();
+  return c.json(data);
+});
+
+app.get('/admin/users', async (c) => {
+  const { data } = await db
+    .from('users')
+    .select('id, email, username, role, stripe_onboarded, total_earnings, total_spent, created_at')
+    .order('created_at', { ascending: false });
+  return c.json(data || []);
+});
+
+app.put('/admin/builds/:id/feature', async (c) => {
+  const { featured } = await c.req.json();
+  const { data } = await db.from('builds').update({ featured }).eq('id', c.req.param('id')).select('id, featured').single();
+  return c.json(data);
+});
+
+// ─── STATS (public) ──────────────────────────────────────────────────────────
+app.get('/stats', async (c) => {
+  const [{ count: totalBuilds }, { count: totalUsers }, { count: totalSales }] = await Promise.all([
+    db.from('builds').select('*', { count: 'exact', head: true }).eq('status', 'active').then((r) => r),
+    db.from('users').select('*', { count: 'exact', head: true }).then((r) => r),
+    db.from('purchases').select('*', { count: 'exact', head: true }).then((r) => r),
+  ]);
+  return c.json({ total_builds: totalBuilds, total_users: totalUsers, total_sales: totalSales });
 });
 
 export default {
