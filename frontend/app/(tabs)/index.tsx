@@ -190,37 +190,40 @@ export default function MarketplaceScreen() {
         </View>
       </View>
 
-      {/* Filters */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10, gap: 6, alignItems: 'center' }}>
-        {GAME_TYPES.map((g) => (
-          <Pressable
-            key={g.value}
-            onPress={() => setGameType(g.value)}
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 6,
-              backgroundColor: gameType === g.value ? '#7C3AED' : t.muted,
-              borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8,
-              minWidth: g.value === 'all' ? 60 : 110,
-            }}>
-            <Text style={{ fontSize: 16, lineHeight: 20 }}>{g.icon}</Text>
-            <Text style={{ color: gameType === g.value ? '#fff' : t.mutedForeground, fontWeight: '700', fontSize: 13 }}>{g.label}</Text>
-          </Pressable>
-        ))}
-        <View style={{ width: 1, backgroundColor: t.border, marginHorizontal: 6, height: 24 }} />
-        {SORTS.map((s) => (
-          <Pressable
-            key={s.value}
-            onPress={() => setSort(s.value)}
-            style={{
-              backgroundColor: sort === s.value ? '#1E1B4B' : t.muted,
-              borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
-            }}>
-            <Text style={{ color: sort === s.value ? '#fff' : t.mutedForeground, fontWeight: '600', fontSize: 12 }}>
-              {s.label}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+        {/* Filters */}
+        <View style={{ backgroundColor: t.background, borderBottomWidth: 1, borderBottomColor: t.border }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 10, gap: 8, flexDirection: 'row', alignItems: 'center' }}>
+            {GAME_TYPES.map((g) => (
+              <Pressable
+                key={g.value}
+                onPress={() => setGameType(g.value)}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 5,
+                  backgroundColor: gameType === g.value ? '#7C3AED' : t.muted,
+                  borderRadius: 20, paddingHorizontal: 14, paddingVertical: 0,
+                  height: 36,
+                }}>
+                <Text style={{ fontSize: 15 }}>{g.icon}</Text>
+                <Text style={{ color: gameType === g.value ? '#fff' : t.mutedForeground, fontWeight: '700', fontSize: 13 }}>{g.label}</Text>
+              </Pressable>
+            ))}
+            <View style={{ width: 1, backgroundColor: t.border, marginHorizontal: 4, height: 20 }} />
+            {SORTS.map((s) => (
+              <Pressable
+                key={s.value}
+                onPress={() => setSort(s.value)}
+                style={{
+                  backgroundColor: sort === s.value ? '#1E1B4B' : t.muted,
+                  borderRadius: 20, paddingHorizontal: 14, paddingVertical: 0,
+                  height: 36, justifyContent: 'center',
+                }}>
+                <Text style={{ color: sort === s.value ? '#fff' : t.mutedForeground, fontWeight: '600', fontSize: 12 }}>
+                  {s.label}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
 
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
