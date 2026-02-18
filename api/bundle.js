@@ -45249,8 +45249,8 @@ var NodePlatformFunctions = class extends PlatformFunctions {
 // backend/node_modules/stripe/esm/RequestSender.js
 var MAX_RETRY_AFTER_WAIT = 60;
 var RequestSender = class _RequestSender {
-  constructor(stripe2, maxBufferedRequestMetric) {
-    this._stripe = stripe2;
+  constructor(stripe, maxBufferedRequestMetric) {
+    this._stripe = stripe;
     this._maxBufferedRequestMetric = maxBufferedRequestMetric;
   }
   _normalizeStripeContext(optsContext, clientContext) {
@@ -45887,14 +45887,14 @@ function stripeMethod(spec) {
 StripeResource.extend = protoExtend;
 StripeResource.method = stripeMethod;
 StripeResource.MAX_BUFFERED_REQUEST_METRICS = 100;
-function StripeResource(stripe2, deprecatedUrlData) {
-  this._stripe = stripe2;
+function StripeResource(stripe, deprecatedUrlData) {
+  this._stripe = stripe;
   if (deprecatedUrlData) {
     throw new Error("Support for curried url params was dropped in stripe-node v7.0.0. Instead, pass two ids.");
   }
   this.basePath = makeURLInterpolator(
     // @ts-ignore changing type of basePath
-    this.basePath || stripe2.getApiField("basePath")
+    this.basePath || stripe.getApiField("basePath")
   );
   this.resourcePath = this.path;
   this.path = makeURLInterpolator(this.path);
@@ -46335,19 +46335,19 @@ __export(resources_exports, {
 });
 
 // backend/node_modules/stripe/esm/ResourceNamespace.js
-function ResourceNamespace(stripe2, resources) {
+function ResourceNamespace(stripe, resources) {
   for (const name in resources) {
     if (!Object.prototype.hasOwnProperty.call(resources, name)) {
       continue;
     }
     const camelCaseName = name[0].toLowerCase() + name.substring(1);
-    const resource = new resources[name](stripe2);
+    const resource = new resources[name](stripe);
     this[camelCaseName] = resource;
   }
 }
 function resourceNamespace(namespace, resources) {
-  return function(stripe2) {
-    return new ResourceNamespace(stripe2, resources);
+  return function(stripe) {
+    return new ResourceNamespace(stripe, resources);
   };
 }
 
@@ -49340,7 +49340,7 @@ var ALLOWED_CONFIG_PROPERTIES = [
   "stripeAccount",
   "stripeContext"
 ];
-var defaultRequestSenderFactory = (stripe2) => new RequestSender(stripe2, StripeResource.MAX_BUFFERED_REQUEST_METRICS);
+var defaultRequestSenderFactory = (stripe) => new RequestSender(stripe, StripeResource.MAX_BUFFERED_REQUEST_METRICS);
 function createStripe(platformFunctions, requestSender = defaultRequestSenderFactory) {
   Stripe2.PACKAGE_VERSION = "20.3.1";
   Stripe2.API_VERSION = ApiVersion;
@@ -54215,7 +54215,16 @@ if (shouldShowDeprecationWarning()) console.warn("\u26A0\uFE0F  Node.js 18 and b
 // backend/src/db.ts
 var supabaseUrl = process.env.SUPABASE_URL || "https://rlkvqkjbnwipggakxqyb.supabase.co";
 var supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsa3Zxa2pibndpcGdnYWt4cXliIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTQwMTM2NSwiZXhwIjoyMDg2OTc3MzY1fQ.L57ktIls9IW9B9k1pnXlN5LmzivbTXcKg-d4Q-FuBwc";
-var db = createClient(supabaseUrl, supabaseKey);
+var db = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false
+  },
+  realtime: {
+    params: { eventsPerSecond: -1 }
+  }
+});
 
 // backend/src/auth.ts
 var import_jsonwebtoken = __toESM(require_jsonwebtoken(), 1);
@@ -54298,19 +54307,25 @@ async function sendBuildApprovedEmail(opts) {
 // backend/src/index.ts
 function hashPassword(password) {
   const salt = (0, import_crypto2.randomBytes)(16).toString("hex");
-  const hash2 = (0, import_crypto2.pbkdf2Sync)(password, salt, 1e5, 64, "sha512").toString("hex");
+  const hash2 = (0, import_crypto2.pbkdf2Sync)(password, salt, 1e4, 64, "sha512").toString("hex");
   return `${salt}:${hash2}`;
 }
 function verifyPassword(password, stored) {
   const [salt, hash2] = stored.split(":");
   if (!salt || !hash2) return false;
-  const attempt = (0, import_crypto2.pbkdf2Sync)(password, salt, 1e5, 64, "sha512").toString("hex");
+  const attempt = (0, import_crypto2.pbkdf2Sync)(password, salt, 1e4, 64, "sha512").toString("hex");
   return attempt === hash2;
 }
 var app = new Hono2();
-var stripe = new stripe_esm_node_default(process.env.STRIPE_SECRET_KEY || "sk_test_placeholder", {
-  apiVersion: "2026-01-28.clover"
-});
+var _stripe = null;
+function getStripe() {
+  if (!_stripe) {
+    _stripe = new stripe_esm_node_default(process.env.STRIPE_SECRET_KEY || "sk_test_placeholder", {
+      apiVersion: "2026-01-28.clover"
+    });
+  }
+  return _stripe;
+}
 var PLATFORM_FEE = 0.3;
 app.use("*", cors({ credentials: true, origin: (origin) => origin || "*" }));
 app.get("/", (c) => c.json({ message: "Sports Builds Market API v1.0" }));
@@ -54383,7 +54398,7 @@ app.post("/stripe/connect", authMiddleware, async (c) => {
   let accountId = user?.stripe_account_id;
   if (!accountId) {
     try {
-      const account = await stripe.accounts.create({ type: "express", email: email3 });
+      const account = await getStripe().accounts.create({ type: "express", email: email3 });
       accountId = account.id;
       await db.from("users").update({ stripe_account_id: accountId }).eq("id", userId);
     } catch {
@@ -54392,7 +54407,7 @@ app.post("/stripe/connect", authMiddleware, async (c) => {
   }
   try {
     const origin = c.req.header("origin") || "http://localhost:8081";
-    const link = await stripe.accountLinks.create({
+    const link = await getStripe().accountLinks.create({
       account: accountId,
       refresh_url: `${origin}/seller/onboarding?refresh=true`,
       return_url: `${origin}/seller/onboarding?success=true`,
@@ -54408,7 +54423,7 @@ app.get("/stripe/connect/status", authMiddleware, async (c) => {
   const { data: user } = await db.from("users").select("stripe_account_id, stripe_onboarded").eq("id", userId).single();
   if (!user?.stripe_account_id) return c.json({ onboarded: false });
   try {
-    const account = await stripe.accounts.retrieve(user.stripe_account_id);
+    const account = await getStripe().accounts.retrieve(user.stripe_account_id);
     const onboarded = account.charges_enabled && account.details_submitted;
     if (onboarded && !user.stripe_onboarded) {
       await db.from("users").update({ stripe_onboarded: true }).eq("id", userId);
@@ -54595,7 +54610,7 @@ app.post("/builds/:id/checkout", authMiddleware, async (c) => {
     paymentIntentData.application_fee_amount = platformFeeCents;
     paymentIntentData.transfer_data = { destination: build.seller.stripe_account_id };
   }
-  const intent = await stripe.paymentIntents.create(paymentIntentData);
+  const intent = await getStripe().paymentIntents.create(paymentIntentData);
   return c.json({ client_secret: intent.client_secret, payment_intent_id: intent.id, amount: build.price });
 });
 app.post("/builds/:id/purchase/confirm", authMiddleware, async (c) => {
@@ -54606,7 +54621,7 @@ app.post("/builds/:id/purchase/confirm", authMiddleware, async (c) => {
   let intentStatus = "succeeded";
   let transferId;
   if (payment_intent_id && !payment_intent_id.startsWith("demo_")) {
-    const intent = await stripe.paymentIntents.retrieve(payment_intent_id);
+    const intent = await getStripe().paymentIntents.retrieve(payment_intent_id);
     intentStatus = intent.status;
     if (intentStatus !== "succeeded") return c.json({ error: "Payment not completed" }, 400);
   }
