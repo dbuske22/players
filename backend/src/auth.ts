@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import type { Context, Next, Env } from 'hono';
+import type { Context, Next } from 'hono';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'sports-builds-market-secret-2026';
 
