@@ -42,13 +42,17 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <LayoutDashboardIcon color={color} size={size} />,
         }}
       />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, size }) => <UserIcon color={color} size={size} />,
-        }}
-      />
-    </Tabs>
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: 'Profile',
+            tabBarIcon: ({ color, size }) => <UserIcon color={color} size={size} />,
+          }}
+        />
+        <Tabs.Screen
+          name="my-builds"
+          options={{ href: null }}
+        />
+      </Tabs>
   );
 }
