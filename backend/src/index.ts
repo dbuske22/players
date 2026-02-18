@@ -280,7 +280,7 @@ app.post('/builds', authMiddleware, adminMiddleware, zValidator('json', createBu
   return c.json(data, 201);
 });
 
-app.put('/builds/:id', authMiddleware, async (c) => {
+app.put('/builds/:id', authMiddleware, adminMiddleware, async (c) => {
   const user = c.get('user') as JWTPayload;
   const body = await c.req.json();
   const { data: build } = await db.from('builds').select('seller_id').eq('id', c.req.param('id')).single();
