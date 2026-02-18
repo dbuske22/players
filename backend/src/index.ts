@@ -259,8 +259,9 @@ app.get('/builds/:id', async (c) => {
 
     const response = {
       ...data,
+      description: hasPurchased ? data.description : null,
       attributes: hasPurchased ? data.attributes : [],
-      badges: hasPurchased ? data.badges : (data.badges ?? []).slice(0, 0),
+      badges: hasPurchased ? data.badges : [],
       import_code: hasPurchased ? data.import_code : null,
       height_in: hasPurchased ? data.height_in : null,
       weight_lbs: hasPurchased ? data.weight_lbs : null,
