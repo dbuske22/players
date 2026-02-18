@@ -227,8 +227,6 @@ export default function MyBuildsScreen() {
     }
   };
 
-  const isEmpty = tab === 'listings' ? listings.length === 0 : purchases.length === 0;
-
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       {/* Header */}
