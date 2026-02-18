@@ -1,5 +1,6 @@
-  "installCommand": "npm install && cd frontend && npm install",
-  "buildCommand": "cd frontend && npx expo export --platform web",
+{
+  "installCommand": "npm install -g bun && bun install && cd frontend && bun install",
+  "buildCommand": "cd frontend && bunx expo export --platform web",
   "outputDirectory": "frontend/dist",
   "functions": {
     "api/index.ts": {
@@ -11,4 +12,4 @@
     { "source": "/api/:path*", "destination": "/api/index.ts" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
-}
+} 
