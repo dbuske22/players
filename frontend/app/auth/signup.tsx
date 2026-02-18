@@ -24,7 +24,7 @@ export default function SignupScreen() {
     if (!email || !password || !username) { setError('Please fill in all fields'); return; }
     if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
     try {
-      await signup(email.trim().toLowerCase(), password, username.trim(), role);
+      await signup(email.trim().toLowerCase(), password, username.trim(), 'buyer');
       router.replace('/onboarding');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Signup failed');
