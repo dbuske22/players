@@ -13,7 +13,8 @@
   "dependencies": {
     "@hono/zod-validator": "^0.7.4",
     "@supabase/supabase-js": "^2.75.0",
-    "hono": "^4.9.10"
+    "hono": "^4.9.10",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
