@@ -10,6 +10,7 @@ export interface User {
   avatar_url: string | null;
   stripe_onboarded: boolean;
   stripe_account_id?: string;
+  preferred_sport: GameType | null;
   playstyle_vector: number[] | null;
   playstyle_labels: PlaystyleLabels | null;
   total_earnings: number;
