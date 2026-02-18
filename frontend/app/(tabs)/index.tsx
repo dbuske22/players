@@ -168,7 +168,7 @@ export default function MarketplaceScreen() {
           <View>
             <Text style={{ color: '#fff', fontWeight: '900', fontSize: 24 }}>Sports Builds Market</Text>
             <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, marginTop: 2 }}>
-              {stats ? `${stats.total_builds} builds • ${stats.total_sales} sold` : 'Buy & sell elite templates'}
+              {stats ? `${stats.total_builds} builds • ${stats.total_sales} sold` : 'Elite templates for every sport'}
             </Text>
           </View>
           {user?.playstyle_vector && (
