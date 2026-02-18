@@ -13,10 +13,16 @@ import type { Build, GameType } from '@/lib/types';
 
 const GAME_TYPES: { label: string; value: GameType | 'all'; icon: string }[] = [
   { label: 'All', value: 'all', icon: '🏆' },
-  { label: 'Basketball', value: 'basketball', icon: '🏀' },
-  { label: 'Football', value: 'football', icon: '🏈' },
-  { label: 'Hockey', value: 'hockey', icon: '🏒' },
+  { label: 'NBA 2K26', value: 'basketball', icon: '🏀' },
+  { label: 'Madden 26', value: 'football', icon: '🏈' },
+  { label: 'NHL 26', value: 'hockey', icon: '🏒' },
 ];
+
+const GAME_LABEL: Record<string, string> = {
+  basketball: 'NBA 2K26',
+  football: 'Madden 26',
+  hockey: 'NHL 26',
+};
 
 const SORTS = [
   { label: 'Newest', value: 'newest' },
