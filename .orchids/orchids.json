@@ -14,5 +14,7 @@
   },
   "iosAppleId": "dbuske22@icloud.com",
   "vercelProjectId": "prj_vSXsV822NxkdlcyQsHMSJX7VnxTs",
-  "deployedWithUserToken": false
+  "deployedWithUserToken": false,
+  "mobileBackendUrl": "playstation-card-resale-app-backend-guse.vercel.app",
+  "mobileBackendVercelProjectId": "prj_vSXsV822NxkdlcyQsHMSJX7VnxTs"
 }
