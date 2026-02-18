@@ -2,12 +2,25 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import bcrypt from 'bcryptjs';
+import { pbkdf2Sync, randomBytes } from 'crypto';
 import Stripe from 'stripe';
 import QRCode from 'qrcode';
 import { db } from './db.js';
 import { signToken, authMiddleware, adminMiddleware, type JWTPayload } from './auth.js';
 import { sendPurchaseConfirmation, sendBuildApprovedEmail } from './email.js';
+
+// --- password helpers (replaces bcryptjs, works in Node.js and Bun) ---
+function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString('hex');
+  const hash = pbkdf2Sync(password, salt, 100_000, 64, 'sha512').toString('hex');
+  return `${salt}:${hash}`;
+}
+function verifyPassword(password: string, stored: string): boolean {
+  const [salt, hash] = stored.split(':');
+  if (!salt || !hash) return false;
+  const attempt = pbkdf2Sync(password, salt, 100_000, 64, 'sha512').toString('hex');
+  return attempt === hash;
+}
 
 type AppEnv = { Variables: { user: JWTPayload } };
 
@@ -32,7 +45,7 @@ const signupSchema = z.object({
 
 app.post('/auth/signup', zValidator('json', signupSchema), async (c) => {
   const { email, password, username } = c.req.valid('json');
-  const hash = await bcrypt.hash(password, 12);
+  const hash = hashPassword(password);
   const { data, error } = await db
     .from('users')
     .insert({ email, password_hash: hash, username, role: 'buyer' })
@@ -55,7 +68,7 @@ app.post('/auth/login', zValidator('json', loginSchema), async (c) => {
   const { email, password } = c.req.valid('json');
   const { data: user } = await db.from('users').select('*').eq('email', email).single();
   if (!user) return c.json({ error: 'Invalid credentials' }, 401);
-  const valid = await bcrypt.compare(password, user.password_hash);
+  const valid = verifyPassword(password, user.password_hash);
   if (!valid) return c.json({ error: 'Invalid credentials' }, 401);
   const token = signToken({ userId: user.id, email: user.email, role: user.role, username: user.username });
   const { password_hash: _, ...safeUser } = user;
