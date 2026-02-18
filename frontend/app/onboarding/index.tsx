@@ -9,9 +9,9 @@ import { PLAYSTYLE_DIMENSIONS } from '@/lib/compatibility';
 import type { PlaystyleLabels, GameType } from '@/lib/types';
 
 const SPORTS: { label: string; value: GameType; emoji: string; description: string; color: string }[] = [
-  { label: 'Basketball', value: 'basketball', emoji: '🏀', description: 'NBA 2K, MyTeam, Pro-Am builds', color: '#F97316' },
-  { label: 'Football', value: 'football', emoji: '🏈', description: 'Madden, Ultimate Team builds', color: '#10B981' },
-  { label: 'Hockey', value: 'hockey', emoji: '🏒', description: 'NHL HUT, EASHL builds', color: '#3B82F6' },
+  { label: 'Basketball Sim', value: 'basketball', emoji: '🏀', description: 'Basketball simulation builds & templates', color: '#F97316' },
+  { label: 'Football Sim', value: 'football', emoji: '🏈', description: 'Football simulation builds & templates', color: '#10B981' },
+  { label: 'Hockey Sim', value: 'hockey', emoji: '🏒', description: 'Hockey simulation builds & templates', color: '#3B82F6' },
 ];
 
 export default function OnboardingScreen() {
