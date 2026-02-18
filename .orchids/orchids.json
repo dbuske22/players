@@ -6,5 +6,11 @@
     "cd frontend; bun install; bun run dev",
     "(command -v ngrok >/dev/null 2>&1 || npm install -g ngrok); cd backend; bun install; bun run dev:tunnel"
   ],
-  "templateId": "react-native"
+  "templateId": "react-native",
+  "appMetadata": {
+    "appName": "Sports Builders Market",
+    "version": "1.0.0",
+    "bundleId": "com.orchids.playstationcardresaleapp",
+    "iconPath": "frontend/assets/images/icon.png"
+  }
 }
