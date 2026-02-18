@@ -1,3 +1,3 @@
-import app from '../backend/src/index.js';
+import { app } from '../backend/src/index.js';
 
-export default app.fetch;
+export default app.fetch.bind(app);
