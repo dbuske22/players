@@ -1,6 +1,6 @@
 {
   "installCommand": "npm install -g bun && bun install && cd backend && bun install",
-  "buildCommand": "cd frontend && bunx expo export --platform web || echo 'expo export failed, continuing'; cd .. && ./backend/node_modules/.bin/esbuild api/index.ts --bundle --platform=node --target=node18 --format=cjs --outfile=api/bundle.js --external:fsevents",
+  "buildCommand": "cd frontend && bunx expo export --platform web || echo 'expo export failed, continuing'; cd .. && ./backend/node_modules/.bin/esbuild api/index.ts --bundle --platform=node --target=node18 --format=cjs --outfile=api/bundle.js --external:fsevents \"--banner:js=(function() { if (typeof globalThis.Headers !== 'undefined') return; try { var u = require('undici'); globalThis.Headers = u.Headers; globalThis.Request = u.Request; globalThis.Response = u.Response; if (!globalThis.fetch) globalThis.fetch = u.fetch; } catch(e) {} })();\"",
   "outputDirectory": "frontend/dist",
   "functions": {
     "api/bundle.js": {
