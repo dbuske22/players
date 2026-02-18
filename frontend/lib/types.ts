@@ -68,6 +68,8 @@ export interface Build {
   performance: BuildPerformance;
   height_in: number | null;
   weight_lbs: number | null;
+  height_in: number | null;
+  weight_lbs: number | null;
   status: BuildStatus;
   featured: boolean;
   view_count: number;
