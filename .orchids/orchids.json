@@ -12,5 +12,7 @@
     "version": "1.0.0",
     "bundleId": "com.orchids.playstationcardresaleapp"
   },
-  "iosAppleId": "dbuske22@icloud.com"
+  "iosAppleId": "dbuske22@icloud.com",
+  "vercelProjectId": "prj_vSXsV822NxkdlcyQsHMSJX7VnxTs",
+  "deployedWithUserToken": false
 }
