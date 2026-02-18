@@ -25,6 +25,11 @@ const SORTS = [
   { label: 'Price ↓', value: 'price_desc' },
 ];
 
+function fmtHeight(inches: number | null | undefined) {
+  if (!inches) return null;
+  return `${Math.floor(inches / 12)}'${inches % 12}"`;
+}
+
 const GAME_COLORS: Record<string, string> = {
   basketball: '#F97316',
   football: '#10B981',
