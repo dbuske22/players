@@ -35,11 +35,12 @@ export interface BuildAttribute {
 }
 
 export interface BuildPerformance {
-  win_rate: number;
-  mode_played: string;
-  avg_grade: string;
-  shot_efficiency: number;
-  patch_version: string;
+  speed: number;
+  shooting: number;
+  defense: number;
+  playmaking: number;
+  athleticism: number;
+  patch_version?: string;
 }
 
 export interface Build {
