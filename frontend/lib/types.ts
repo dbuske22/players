@@ -66,6 +66,8 @@ export interface Build {
   badge_count?: number;
   attribute_count?: number;
   performance: BuildPerformance;
+  height_in: number | null;
+  weight_lbs: number | null;
   status: BuildStatus;
   featured: boolean;
   view_count: number;
