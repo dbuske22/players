@@ -13,26 +13,26 @@ const BULLETS = [
     icon: '⚡',
     color: '#FACC15',
     label: 'Verified Meta Builds',
-    desc: 'Every build tested and validated by top-ranked players.',
+    desc: 'Every template tested and validated by top-ranked players across sim sports.',
   },
   {
     icon: '🎯',
     color: '#34D399',
-    label: 'Personalized Recommendations',
-    desc: 'Builds matched to your playstyle, position, and badge priorities.',
+    label: 'Personalized Match Score',
+    desc: 'Builds matched to your playstyle, position, and preferences.',
   },
   {
     icon: '🔄',
     color: '#60A5FA',
-    label: 'Patch-Ready Updates',
-    desc: 'Refreshed every patch so you never fall behind the meta.',
+    label: 'Always Up-to-Date',
+    desc: 'Refreshed every patch so your build never falls behind the meta.',
   },
 ];
 
 const STATS = [
-  { val: '12K+', lab: 'Builds' },
-  { val: '98%', lab: 'Win Rate' },
-  { val: 'Live', lab: 'Patch Updates' },
+  { val: '500+', lab: 'Builds' },
+  { val: '92%', lab: 'Match Rate' },
+  { val: 'Live', lab: 'Updates' },
 ];
 
 export default function LoginScreen() {
@@ -112,7 +112,7 @@ export default function LoginScreen() {
                 letterSpacing: 1.8,
                 textTransform: 'uppercase',
               }}>
-                NBA 2K · Madden · FC25
+                  Basketball · Football · Hockey Sims
               </Text>
             </View>
           </View>
@@ -155,7 +155,7 @@ export default function LoginScreen() {
                 lineHeight: 44,
                 letterSpacing: -0.8,
               }}>
-                Before You Waste VC.
+                Before You Waste Time.
               </Text>
             </View>
           </View>
