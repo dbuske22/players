@@ -1,12 +1,11 @@
 {
-  "installCommand": "npm install -g bun && bun install --network-concurrency=5 && cd backend && bun install --network-concurrency=5 && cd ../frontend && bun install",
-  "buildCommand": "cd frontend --network-concurrency=5 && bunx expo export --platform web ; cd .. && ./backend/node_modules/.bin/esbuild api/index.ts --bundle --platform=node --target=node18 --format=cjs --outfile=api/bundle.js --external:fsevents",
+  "installCommand": "npm install -g bun && bun install && cd backend && bun install",
+  "buildCommand": "cd frontend && bunx expo export --platform web; cd .. && ./backend/node_modules/.bin/esbuild api/index.ts --bundle --platform=node --target=node18 --format=cjs --outfile=api/bundle.js --external:fsevents",
   "outputDirectory": "frontend/dist",
   "functions": {
     "api/bundle.js": {
       "memory": 1024,
-      "maxDuration": 30,
-      "runtime": "nodejs20.x"
+      "maxDuration": 30
     }
   },
   "rewrites": [
