@@ -17,8 +17,7 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'buyer' | 'seller'>('buyer');
-  const [error, setError] = useState('');
+    const [error, setError] = useState('');
 
   const handleSignup = async () => {
     setError('');
