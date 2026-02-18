@@ -77,6 +77,7 @@ app.get('/auth/me', authMiddleware, async (c) => {
 // ─── PLAYSTYLE SCAN ──────────────────────────────────────────────────────────
 const playstyleSchema = z.object({
   vector: z.array(z.number().min(1).max(10)).length(8),
+  preferred_sport: z.enum(['basketball', 'football', 'hockey']).optional(),
   labels: z.object({
     shootVsDrive: z.number(),
     soloVsSquad: z.number(),
@@ -91,12 +92,18 @@ const playstyleSchema = z.object({
 
 app.post('/users/playstyle', authMiddleware, zValidator('json', playstyleSchema), async (c) => {
   const { userId } = c.get('user') as JWTPayload;
-  const { vector, labels } = c.req.valid('json');
+  const { vector, labels, preferred_sport } = c.req.valid('json');
+  const updatePayload: Record<string, unknown> = {
+    playstyle_vector: vector,
+    playstyle_labels: labels,
+    updated_at: new Date().toISOString(),
+  };
+  if (preferred_sport) updatePayload.preferred_sport = preferred_sport;
   const { data, error } = await db
     .from('users')
-    .update({ playstyle_vector: vector, playstyle_labels: labels, updated_at: new Date().toISOString() })
+    .update(updatePayload)
     .eq('id', userId)
-    .select('id, playstyle_vector, playstyle_labels')
+    .select('id, playstyle_vector, playstyle_labels, preferred_sport')
     .single();
   if (error) return c.json({ error: error.message }, 400);
   return c.json(data);
