@@ -50,12 +50,13 @@ export default function SellScreen() {
   const [attributes, setAttributes] = useState<BuildAttribute[]>([]);
   const [buildVector, setBuildVector] = useState<number[]>(Array(8).fill(5));
 
-  // Performance
-  const [winRate, setWinRate] = useState('55');
-  const [modePlayed, setModePlayed] = useState('');
-  const [avgGrade, setAvgGrade] = useState('A');
-  const [shotEfficiency, setShotEfficiency] = useState('48');
-  const [patchVersion, setPatchVersion] = useState('1.0');
+    // Performance
+    const [perfSpeed, setPerfSpeed] = useState('75');
+    const [perfShooting, setPerfShooting] = useState('75');
+    const [perfDefense, setPerfDefense] = useState('75');
+    const [perfPlaymaking, setPerfPlaymaking] = useState('75');
+    const [perfAthleticism, setPerfAthleticism] = useState('75');
+    const [patchVersion, setPatchVersion] = useState('2K26');
 
   const attrList = ATTR_LISTS[gameType];
 
