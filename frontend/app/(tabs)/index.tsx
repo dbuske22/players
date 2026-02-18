@@ -82,14 +82,14 @@ function BuildCard({ build, user }: { build: Build; user: ReturnType<typeof useA
 
       {/* Body */}
       <View style={{ padding: 12 }}>
-        {/* Performance stats */}
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
-          {[
-            { label: 'Win Rate', val: `${build.performance?.win_rate || 0}%` },
-            { label: 'Efficiency', val: `${build.performance?.shot_efficiency || 0}%` },
-            { label: 'Avg Grade', val: build.performance?.avg_grade || 'N/A' },
-            { label: 'Mode', val: build.performance?.mode_played || 'N/A' },
-          ].map((s) => (
+          {/* Performance stats */}
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+            {[
+              { label: 'Speed', val: `${build.performance?.speed ?? '—'}%` },
+              { label: 'Shooting', val: `${build.performance?.shooting ?? '—'}%` },
+              { label: 'Defense', val: `${build.performance?.defense ?? '—'}%` },
+              { label: 'Athletic', val: `${build.performance?.athleticism ?? '—'}%` },
+            ].map((s) => (
             <View key={s.label} style={{ flex: 1, backgroundColor: t.muted, borderRadius: 8, padding: 7, alignItems: 'center' }}>
               <Text style={{ color: t.mutedForeground, fontSize: 9, marginBottom: 2 }}>{s.label.toUpperCase()}</Text>
               <Text style={{ color: t.foreground, fontWeight: '700', fontSize: 12 }} numberOfLines={1}>{s.val}</Text>
