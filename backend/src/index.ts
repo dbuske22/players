@@ -643,6 +643,8 @@ app.get('/stats', async (c) => {
   return c.json({ total_builds: totalBuilds, total_users: totalUsers, total_sales: totalSales });
 });
 
+export { app };
+
 export default {
   fetch: app.fetch,
   port: 3002,
