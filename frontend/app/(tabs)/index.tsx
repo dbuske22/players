@@ -70,7 +70,7 @@ function BuildCard({ build, user }: { build: Build; user: ReturnType<typeof useA
           </View>
           <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }} numberOfLines={1}>{build.title}</Text>
             <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>{build.archetype} • by {build.seller?.username}</Text>
-            <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11, marginTop: 2 }}>{GAME_LABEL[build.game_type] ?? build.game_type}</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11, marginTop: 2 }}>{GAME_LABEL[build.game_type] || (build.game_type === 'basketball' ? 'NBA 2K26' : build.game_type === 'football' ? 'Madden 26' : 'NHL 26')}</Text>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 4 }}>
           <Text style={{ color: '#fff', fontWeight: '900', fontSize: 20 }}>${build.price.toFixed(2)}</Text>
