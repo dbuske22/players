@@ -217,14 +217,14 @@ export default function AdminScreen() {
                       Seller: {(b as { seller?: { username?: string } }).seller?.username || 'Unknown'}
                     </Text>
 
-                    {/* Performance snapshot */}
-                    <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
-                      {[
-                        { label: 'Win Rate', val: `${b.performance?.win_rate}%` },
-                        { label: 'Efficiency', val: `${b.performance?.shot_efficiency}%` },
-                        { label: 'Grade', val: b.performance?.avg_grade },
-                        { label: 'Mode', val: b.performance?.mode_played },
-                      ].map((s) => (
+                      {/* Performance snapshot */}
+                      <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
+                        {[
+                          { label: 'Speed', val: `${b.performance?.speed ?? '—'}%` },
+                          { label: 'Shooting', val: `${b.performance?.shooting ?? '—'}%` },
+                          { label: 'Defense', val: `${b.performance?.defense ?? '—'}%` },
+                          { label: 'Athletic', val: `${b.performance?.athleticism ?? '—'}%` },
+                        ].map((s) => (
                         <View key={s.label} style={{ flex: 1, backgroundColor: t.muted, borderRadius: 6, padding: 6, alignItems: 'center' }}>
                           <Text style={{ color: t.mutedForeground, fontSize: 9 }}>{s.label}</Text>
                           <Text style={{ color: t.foreground, fontWeight: '700', fontSize: 11 }} numberOfLines={1}>{s.val}</Text>
