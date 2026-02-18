@@ -31,11 +31,11 @@ const signupSchema = z.object({
 });
 
 app.post('/auth/signup', zValidator('json', signupSchema), async (c) => {
-  const { email, password, username, role } = c.req.valid('json');
+  const { email, password, username } = c.req.valid('json');
   const hash = await bcrypt.hash(password, 12);
   const { data, error } = await db
     .from('users')
-    .insert({ email, password_hash: hash, username, role })
+    .insert({ email, password_hash: hash, username, role: 'buyer' })
     .select('id, email, username, role, playstyle_vector, playstyle_labels, stripe_onboarded, avatar_url, total_earnings, total_spent, created_at')
     .single();
   if (error) {
