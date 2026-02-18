@@ -9,7 +9,11 @@ import type {
   GameType,
 } from './types';
 
-const BASE = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+const isVercel = typeof window !== 'undefined' &&
+  !window.location.hostname.includes('localhost') &&
+  !window.location.hostname.includes('orchids.cloud');
+
+const BASE = isVercel
   ? '/api'
   : (process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:3002');
 
@@ -26,8 +30,13 @@ async function request<T>(
       ...(headers as Record<string, string>),
     },
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  let data: Record<string, unknown>;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(res.ok ? 'Unexpected server response' : `Server error (${res.status}). Please try again.`);
+  }
+  if (!res.ok) throw new Error((data.error as string) || `Server error (${res.status})`);
   return data as T;
 }
 
