@@ -54518,21 +54518,26 @@ var createBuildSchema = external_exports.object({
   position: external_exports.string().min(1),
   archetype: external_exports.string().min(1),
   description: external_exports.string().optional(),
-  price: external_exports.number().min(3.99).max(7.99),
+  price: external_exports.number().min(1).max(10),
   import_code: external_exports.string().optional(),
   preview_url: external_exports.string().optional(),
   build_vector: external_exports.array(external_exports.number().min(1).max(10)).length(8).optional(),
   attributes: external_exports.array(external_exports.object({ key: external_exports.string(), value: external_exports.union([external_exports.string(), external_exports.number()]) })),
   badges: external_exports.array(external_exports.string()),
   performance: external_exports.object({
-    win_rate: external_exports.number().min(0).max(100),
-    mode_played: external_exports.string(),
-    avg_grade: external_exports.string(),
-    shot_efficiency: external_exports.number().min(0).max(100),
+    speed: external_exports.number().min(0).max(100).optional(),
+    shooting: external_exports.number().min(0).max(100).optional(),
+    defense: external_exports.number().min(0).max(100).optional(),
+    playmaking: external_exports.number().min(0).max(100).optional(),
+    athleticism: external_exports.number().min(0).max(100).optional(),
+    win_rate: external_exports.number().min(0).max(100).optional(),
+    mode_played: external_exports.string().optional(),
+    avg_grade: external_exports.string().optional(),
+    shot_efficiency: external_exports.number().min(0).max(100).optional(),
     patch_version: external_exports.string()
   })
 });
-app.post("/builds", authMiddleware, adminMiddleware, zValidator("json", createBuildSchema), async (c) => {
+app.post("/builds", authMiddleware, zValidator("json", createBuildSchema), async (c) => {
   const user = c.get("user");
   const body = c.req.valid("json");
   const { data, error: error48 } = await db.from("builds").insert({
@@ -54543,7 +54548,7 @@ app.post("/builds", authMiddleware, adminMiddleware, zValidator("json", createBu
   if (error48) return c.json({ error: error48.message }, 400);
   return c.json(data, 201);
 });
-app.put("/builds/:id", authMiddleware, adminMiddleware, async (c) => {
+app.put("/builds/:id", authMiddleware, async (c) => {
   const user = c.get("user");
   const body = await c.req.json();
   const { data: build } = await db.from("builds").select("seller_id").eq("id", c.req.param("id")).single();
@@ -54738,6 +54743,176 @@ app.get("/stats", async (c) => {
     db.from("purchases").select("*", { count: "exact", head: true }).then((r) => r)
   ]);
   return c.json({ total_builds: totalBuilds, total_users: totalUsers, total_sales: totalSales });
+});
+app.get("/leaderboard", async (c) => {
+  const gameType = c.req.query("game_type");
+  let query = db.from("builds").select("id, title, game_type, position, archetype, price, performance, view_count, created_at, seller:seller_id(username, avatar_url)").eq("status", "active");
+  if (gameType) query = query.eq("game_type", gameType);
+  query = query.order("view_count", { ascending: false }).limit(20);
+  const { data: builds } = await query;
+  const ids = (builds || []).map((b) => b.id);
+  const [purchaseRes, reviewRes] = await Promise.all([
+    ids.length ? db.from("purchases").select("build_id").in("build_id", ids) : Promise.resolve({ data: [] }),
+    ids.length ? db.from("reviews").select("build_id, rating").in("build_id", ids) : Promise.resolve({ data: [] })
+  ]);
+  const saleCounts = {};
+  (purchaseRes.data || []).forEach((p) => {
+    saleCounts[p.build_id] = (saleCounts[p.build_id] || 0) + 1;
+  });
+  const ratingMap = {};
+  (reviewRes.data || []).forEach((r) => {
+    if (!ratingMap[r.build_id]) ratingMap[r.build_id] = { sum: 0, count: 0 };
+    ratingMap[r.build_id].sum += r.rating;
+    ratingMap[r.build_id].count++;
+  });
+  const enriched = (builds || []).map((b, i) => ({
+    ...b,
+    rank: i + 1,
+    sales_count: saleCounts[b.id] || 0,
+    avg_rating: ratingMap[b.id] ? Math.round(ratingMap[b.id].sum / ratingMap[b.id].count * 10) / 10 : null
+  }));
+  enriched.sort((a, b) => b.sales_count - a.sales_count || (b.view_count || 0) - (a.view_count || 0));
+  enriched.forEach((b, i) => {
+    b.rank = i + 1;
+  });
+  return c.json(enriched);
+});
+app.post("/admin/seed", authMiddleware, adminMiddleware, async (c) => {
+  const { userId } = c.get("user");
+  const seedBuilds = [
+    {
+      seller_id: userId,
+      title: "Elite Guard Template",
+      game_type: "basketball",
+      position: "Point Guard",
+      archetype: "Pure Scorer",
+      description: "A lightning-fast guard build optimized for scoring and creating. Dominates in transition and pick-and-roll situations.",
+      price: 4.99,
+      import_code: '{"build":"elite-guard-v1","archetype":"pure_scorer","sport":"basketball"}',
+      build_vector: [8, 4, 3, 7, 9, 4, 9, 6],
+      attributes: [
+        { key: "Speed", value: 92 },
+        { key: "Acceleration", value: 90 },
+        { key: "Ball Handling", value: 88 },
+        { key: "3-Point Shot", value: 85 },
+        { key: "Mid-Range Shot", value: 82 },
+        { key: "Layup", value: 86 },
+        { key: "Pass Accuracy", value: 75 },
+        { key: "Perimeter Defense", value: 64 }
+      ],
+      badges: ["Limitless Range", "Handles For Days", "Quick First Step", "Slithery", "Clamp Breaker"],
+      performance: { speed: 92, shooting: 85, defense: 64, playmaking: 78, athleticism: 87, patch_version: "1.0" },
+      status: "active",
+      featured: true,
+      view_count: 412
+    },
+    {
+      seller_id: userId,
+      title: "Lockdown Defender",
+      game_type: "basketball",
+      position: "Small Forward",
+      archetype: "Wing Stopper",
+      description: "Built to shut down elite scorers. High lateral quickness and steal tendencies make this a nightmare for opponents.",
+      price: 3.99,
+      import_code: '{"build":"lockdown-sf-v1","archetype":"wing_stopper","sport":"basketball"}',
+      build_vector: [3, 6, 9, 8, 3, 8, 5, 7],
+      attributes: [
+        { key: "Speed", value: 85 },
+        { key: "Perimeter Defense", value: 95 },
+        { key: "Steal", value: 88 },
+        { key: "Block", value: 72 },
+        { key: "Strength", value: 80 },
+        { key: "Vertical", value: 78 },
+        { key: "3-Point Shot", value: 65 },
+        { key: "Ball Handling", value: 62 }
+      ],
+      badges: ["Clamps", "Interceptor", "Rim Protector", "Hustler", "Pick Dodger"],
+      performance: { speed: 85, shooting: 63, defense: 95, playmaking: 58, athleticism: 82, patch_version: "1.0" },
+      status: "active",
+      view_count: 287
+    },
+    {
+      seller_id: userId,
+      title: "Balanced QB Template",
+      game_type: "football",
+      position: "Quarterback",
+      archetype: "Scrambler",
+      description: "A mobile QB that can make plays with his legs and arm. Perfect for users who love extending plays.",
+      price: 4.99,
+      import_code: '{"build":"scrambler-qb-v1","archetype":"scrambler","sport":"football"}',
+      build_vector: [7, 5, 4, 6, 8, 6, 8, 5],
+      attributes: [
+        { key: "Speed", value: 88 },
+        { key: "Acceleration", value: 86 },
+        { key: "Throw Power", value: 84 },
+        { key: "Throw Accuracy", value: 86 },
+        { key: "Ball Carrier Vision", value: 80 },
+        { key: "Agility", value: 85 },
+        { key: "Stamina", value: 78 },
+        { key: "Strength", value: 65 }
+      ],
+      badges: ["Scrambler", "Strong Arm", "Field General", "Evasive"],
+      performance: { speed: 88, shooting: 84, defense: 55, playmaking: 82, athleticism: 86, patch_version: "1.0" },
+      status: "active",
+      view_count: 198
+    },
+    {
+      seller_id: userId,
+      title: "Power Forward Finisher",
+      game_type: "basketball",
+      position: "Power Forward",
+      archetype: "Glass Cleaner",
+      description: "Dominant in the paint. This build crashes the boards and finishes through contact at an elite level.",
+      price: 3.99,
+      import_code: '{"build":"pf-glass-v1","archetype":"glass_cleaner","sport":"basketball"}',
+      build_vector: [3, 7, 7, 5, 4, 9, 4, 8],
+      attributes: [
+        { key: "Strength", value: 90 },
+        { key: "Vertical", value: 82 },
+        { key: "Dunk Power", value: 92 },
+        { key: "Interior Defense", value: 85 },
+        { key: "Block", value: 78 },
+        { key: "Speed", value: 68 },
+        { key: "Ball Handling", value: 45 },
+        { key: "3-Point Shot", value: 38 }
+      ],
+      badges: ["Posterizer", "Brick Wall", "Pogo Stick", "Physical Finisher", "Bulldozer"],
+      performance: { speed: 68, shooting: 55, defense: 87, playmaking: 45, athleticism: 91, patch_version: "1.0" },
+      status: "active",
+      view_count: 155
+    },
+    {
+      seller_id: userId,
+      title: "Two-Way Winger",
+      game_type: "hockey",
+      position: "Left Wing",
+      archetype: "Power Forward",
+      description: "A physical winger who can score in the dirty areas and play rugged defense. Built for sim hockey dominance.",
+      price: 4.49,
+      import_code: '{"build":"twoway-lw-v1","archetype":"power_forward","sport":"hockey"}',
+      build_vector: [6, 6, 7, 6, 6, 8, 6, 6],
+      attributes: [
+        { key: "Speed", value: 80 },
+        { key: "Slap Shot Power", value: 86 },
+        { key: "Wrist Shot Accuracy", value: 82 },
+        { key: "Checking", value: 88 },
+        { key: "Defensive Awareness", value: 82 },
+        { key: "Stickhandling", value: 74 },
+        { key: "Passing", value: 72 },
+        { key: "Endurance", value: 85 }
+      ],
+      badges: ["Net Front Presence", "Big Hitter", "Sniper", "Back-Checker"],
+      performance: { speed: 80, shooting: 82, defense: 84, playmaking: 72, athleticism: 83, patch_version: "1.0" },
+      status: "active",
+      view_count: 102
+    }
+  ];
+  const inserted = [];
+  for (const build of seedBuilds) {
+    const { data, error: error48 } = await db.from("builds").upsert(build, { onConflict: "title" }).select("id, title").single();
+    if (!error48 && data) inserted.push(data);
+  }
+  return c.json({ seeded: inserted.length, builds: inserted });
 });
 var src_default = {
   fetch: app.fetch,
