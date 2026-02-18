@@ -263,7 +263,7 @@ const createBuildSchema = z.object({
   }),
 });
 
-app.post('/builds', authMiddleware, zValidator('json', createBuildSchema), async (c) => {
+app.post('/builds', authMiddleware, adminMiddleware, zValidator('json', createBuildSchema), async (c) => {
   const user = c.get('user') as JWTPayload;
   const body = c.req.valid('json');
 
