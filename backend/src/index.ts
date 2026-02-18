@@ -257,16 +257,18 @@ app.get('/builds/:id', async (c) => {
     } catch { /* invalid token — treat as unauthenticated */ }
   }
 
-  const response = {
-    ...data,
-    attributes: hasPurchased ? data.attributes : [],
-    badges: hasPurchased ? data.badges : (data.badges ?? []).slice(0, 0),
-    import_code: hasPurchased ? data.import_code : null,
-    badge_count: (data.badges ?? []).length,
-    attribute_count: (data.attributes ?? []).length,
-    reviews: reviews || [],
-    avg_rating: avgRating,
-  };
+    const response = {
+      ...data,
+      attributes: hasPurchased ? data.attributes : [],
+      badges: hasPurchased ? data.badges : (data.badges ?? []).slice(0, 0),
+      import_code: hasPurchased ? data.import_code : null,
+      height_in: hasPurchased ? data.height_in : null,
+      weight_lbs: hasPurchased ? data.weight_lbs : null,
+      badge_count: (data.badges ?? []).length,
+      attribute_count: (data.attributes ?? []).length,
+      reviews: reviews || [],
+      avg_rating: avgRating,
+    };
 
   return c.json(response);
 });
