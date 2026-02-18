@@ -18,7 +18,8 @@ export function verifyToken(token: string): JWTPayload {
   return jwt.verify(token, JWT_SECRET) as JWTPayload;
 }
 
-export async function authMiddleware(c: Context, next: Next) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function authMiddleware(c: Context<any>, next: Next) {
   const auth = c.req.header('Authorization');
   if (!auth || !auth.startsWith('Bearer ')) {
     return c.json({ error: 'Unauthorized' }, 401);
@@ -33,7 +34,8 @@ export async function authMiddleware(c: Context, next: Next) {
   }
 }
 
-export async function adminMiddleware(c: Context, next: Next) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function adminMiddleware(c: Context<any>, next: Next) {
   const user = c.get('user') as JWTPayload;
   if (!user || user.role !== 'admin') {
     return c.json({ error: 'Forbidden' }, 403);
