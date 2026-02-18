@@ -1,7 +1,15 @@
 import { Tabs } from 'expo-router';
-import { ShoppingBagIcon, PlusCircleIcon, LayoutDashboardIcon, UserIcon } from 'lucide-react-native';
+import { Text } from 'react-native';
 import { useColorScheme } from 'nativewind';
 import { THEME } from '@/lib/theme';
+
+function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
+  return (
+    <Text style={{ fontSize: focused ? 22 : 20, opacity: focused ? 1 : 0.55 }}>
+      {emoji}
+    </Text>
+  );
+}
 
 export default function TabLayout() {
   const { colorScheme } = useColorScheme();
@@ -16,8 +24,9 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: theme.background,
           borderTopColor: theme.border,
-          height: 60,
+          height: 62,
           paddingBottom: 8,
+          paddingTop: 4,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}>
@@ -25,34 +34,34 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Marketplace',
-          tabBarIcon: ({ color, size }) => <ShoppingBagIcon color={color} size={size} />,
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🛒" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="sell"
         options={{
           title: 'Sell',
-          tabBarIcon: ({ color, size }) => <PlusCircleIcon color={color} size={size} />,
+          tabBarIcon: ({ focused }) => <TabIcon emoji="➕" focused={focused} />,
         }}
       />
-        <Tabs.Screen
-          name="dashboard"
-          options={{
-            title: 'Dashboard',
-            tabBarIcon: ({ color, size }) => <LayoutDashboardIcon color={color} size={size} />,
-          }}
-        />
-        <Tabs.Screen
-          name="profile"
-          options={{
-            title: 'Profile',
-            tabBarIcon: ({ color, size }) => <UserIcon color={color} size={size} />,
-          }}
-        />
-        <Tabs.Screen
-          name="my-builds"
-          options={{ href: null }}
-        />
-      </Tabs>
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: 'Dashboard',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="📊" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="my-builds"
+        options={{ href: null }}
+      />
+    </Tabs>
   );
 }
