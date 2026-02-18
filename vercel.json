@@ -1,6 +1,6 @@
 {
   "installCommand": "npm install -g bun && bun install && cd backend && bun install && cd ../frontend && bun install",
-  "buildCommand": "cd frontend && bunx expo export --platform web && cd .. && ./backend/node_modules/.bin/esbuild api/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=api/bundle.js --external:fsevents",
+  "buildCommand": "cd frontend && bunx expo export --platform web; cd .. && ./backend/node_modules/.bin/esbuild api/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=api/bundle.js --external:fsevents",
   "outputDirectory": "frontend/dist",
   "functions": {
     "api/bundle.js": {
