@@ -108,13 +108,14 @@ export default function SellScreen() {
         build_vector: buildVector,
         attributes: finalAttrs,
         badges,
-        performance: {
-          win_rate: parseFloat(winRate) || 50,
-          mode_played: modePlayed,
-          avg_grade: avgGrade,
-          shot_efficiency: parseFloat(shotEfficiency) || 48,
-          patch_version: patchVersion,
-        },
+          performance: {
+            speed: parseFloat(perfSpeed) || 75,
+            shooting: parseFloat(perfShooting) || 75,
+            defense: parseFloat(perfDefense) || 75,
+            playmaking: parseFloat(perfPlaymaking) || 75,
+            athleticism: parseFloat(perfAthleticism) || 75,
+            patch_version: patchVersion,
+          },
       });
       Alert.alert('Build Submitted!', 'Your build is pending admin review. You\'ll be notified once approved.', [
         { text: 'View My Builds', onPress: () => router.push('/(tabs)/dashboard') },
