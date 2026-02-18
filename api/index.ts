@@ -1,18 +1,25 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 
-// Polyfill Web Fetch API for Node < 18 environments (Vercel may run Node 16)
-// Node 18+ has these globally via undici; Node 16 does not.
+// Import undici so esbuild bundles it — used as polyfill on environments
+// that lack the Web Fetch API globals (Node < 18, some Vercel runtimes).
+import * as undici from 'undici';
+
+// Must assign globals BEFORE any other module runs (hoisted by esbuild).
 if (typeof globalThis.Headers === 'undefined') {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const undici = require('undici');
-    globalThis.Headers = undici.Headers;
-    globalThis.Request = undici.Request;
-    globalThis.Response = undici.Response;
-    if (!globalThis.fetch) globalThis.fetch = undici.fetch;
-  } catch {
-    // undici not available — we're on a Node version that should have these globals
-  }
+  // @ts-expect-error assigning to globalThis
+  globalThis.Headers = undici.Headers;
+}
+if (typeof globalThis.Request === 'undefined') {
+  // @ts-expect-error assigning to globalThis
+  globalThis.Request = undici.Request;
+}
+if (typeof globalThis.Response === 'undefined') {
+  // @ts-expect-error assigning to globalThis
+  globalThis.Response = undici.Response;
+}
+if (typeof globalThis.fetch === 'undefined') {
+  // @ts-expect-error assigning to globalThis
+  globalThis.fetch = undici.fetch;
 }
 
 import { app } from '../backend/src/index.js';
