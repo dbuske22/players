@@ -35,13 +35,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <PlusCircleIcon color={color} size={size} />,
         }}
       />
-      <Tabs.Screen
-        name="dashboard"
-        options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color, size }) => <LayoutDashboardIcon color={color} size={size} />,
-        }}
-      />
+        <Tabs.Screen
+          name="dashboard"
+          options={{
+            title: 'Dashboard',
+            tabBarIcon: ({ color, size }) => <LayoutDashboardIcon color={color} size={size} />,
+          }}
+        />
         <Tabs.Screen
           name="profile"
           options={{
