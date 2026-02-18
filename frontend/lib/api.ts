@@ -43,11 +43,11 @@ export const authApi = {
 
 // ─── Playstyle ───────────────────────────────────────────────────────────────
 export const playstyleApi = {
-  save: (token: string, vector: number[], labels: PlaystyleLabels) =>
+  save: (token: string, vector: number[], labels: PlaystyleLabels, preferred_sport?: GameType) =>
     request('/users/playstyle', {
       method: 'POST',
       token,
-      body: JSON.stringify({ vector, labels }),
+      body: JSON.stringify({ vector, labels, preferred_sport }),
     }),
 };
 
