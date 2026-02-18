@@ -191,28 +191,29 @@ export default function MarketplaceScreen() {
       </View>
 
       {/* Filters */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 10, gap: 8 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10, gap: 6, alignItems: 'center' }}>
         {GAME_TYPES.map((g) => (
           <Pressable
             key={g.value}
             onPress={() => setGameType(g.value)}
             style={{
-              flexDirection: 'row', alignItems: 'center', gap: 4,
+              flexDirection: 'row', alignItems: 'center', gap: 6,
               backgroundColor: gameType === g.value ? '#7C3AED' : t.muted,
-              borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7,
+              borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8,
+              minWidth: g.value === 'all' ? 60 : 110,
             }}>
-            <Text style={{ fontSize: 13 }}>{g.icon}</Text>
+            <Text style={{ fontSize: 16, lineHeight: 20 }}>{g.icon}</Text>
             <Text style={{ color: gameType === g.value ? '#fff' : t.mutedForeground, fontWeight: '700', fontSize: 13 }}>{g.label}</Text>
           </Pressable>
         ))}
-        <View style={{ width: 1, backgroundColor: t.border, marginHorizontal: 4 }} />
+        <View style={{ width: 1, backgroundColor: t.border, marginHorizontal: 6, height: 24 }} />
         {SORTS.map((s) => (
           <Pressable
             key={s.value}
             onPress={() => setSort(s.value)}
             style={{
               backgroundColor: sort === s.value ? '#1E1B4B' : t.muted,
-              borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7,
+              borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
             }}>
             <Text style={{ color: sort === s.value ? '#fff' : t.mutedForeground, fontWeight: '600', fontSize: 12 }}>
               {s.label}
