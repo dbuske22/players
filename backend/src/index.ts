@@ -248,7 +248,7 @@ const createBuildSchema = z.object({
   position: z.string().min(1),
   archetype: z.string().min(1),
   description: z.string().optional(),
-  price: z.number().min(1).max(10),
+  price: z.number().min(3.99).max(7.99),
   import_code: z.string().optional(),
   preview_url: z.string().optional(),
   build_vector: z.array(z.number().min(1).max(10)).length(8).optional(),
