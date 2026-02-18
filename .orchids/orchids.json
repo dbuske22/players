@@ -10,7 +10,7 @@
   "appMetadata": {
     "appName": "Sports Builders Market",
     "version": "1.0.0",
-    "bundleId": "com.orchids.playstationcardresaleapp",
-    "iconPath": "frontend/assets/images/icon.png"
-  }
+    "bundleId": "com.orchids.playstationcardresaleapp"
+  },
+  "iosAppleId": "dbuske22@icloud.com"
 }
