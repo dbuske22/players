@@ -13,15 +13,15 @@ import type { Build, GameType } from '@/lib/types';
 
 const GAME_TYPES: { label: string; value: GameType | 'all'; icon: string }[] = [
   { label: 'All', value: 'all', icon: '🏆' },
-  { label: 'NBA 2K26', value: 'basketball', icon: '🏀' },
-  { label: 'Madden 26', value: 'football', icon: '🏈' },
-  { label: 'NHL 26', value: 'hockey', icon: '🏒' },
+  { label: 'Basketball Sim', value: 'basketball', icon: '🏀' },
+  { label: 'Football Sim', value: 'football', icon: '🏈' },
+  { label: 'Hockey Sim', value: 'hockey', icon: '🏒' },
 ];
 
 const GAME_LABEL: Record<string, string> = {
-  basketball: 'NBA 2K26',
-  football: 'Madden 26',
-  hockey: 'NHL 26',
+  basketball: 'Basketball Sim',
+  football: 'Football Sim',
+  hockey: 'Hockey Sim',
 };
 
 const SORTS = [
@@ -70,7 +70,7 @@ function BuildCard({ build, user }: { build: Build; user: ReturnType<typeof useA
           </View>
           <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }} numberOfLines={1}>{build.title}</Text>
             <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>{build.archetype} • by {build.seller?.username}</Text>
-              <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11, marginTop: 2 }}>{GAME_LABEL[build.game_type] || (build.game_type === 'basketball' ? 'NBA 2K26' : build.game_type === 'football' ? 'Madden 26' : 'NHL 26')}</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2 }}>{GAME_LABEL[build.game_type] || build.game_type}</Text>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 4 }}>
           <Text style={{ color: '#fff', fontWeight: '900', fontSize: 20 }}>${build.price.toFixed(2)}</Text>
@@ -167,7 +167,7 @@ export default function MarketplaceScreen() {
       <View style={{ backgroundColor: '#7C3AED', paddingTop: 56, paddingBottom: 16, paddingHorizontal: 20 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
           <View>
-            <Text style={{ color: '#fff', fontWeight: '900', fontSize: 24 }}>Sports Builds Market</Text>
+            <Text style={{ color: '#fff', fontWeight: '900', fontSize: 24 }}>Players1 Market</Text>
             <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, marginTop: 2 }}>
               {stats ? `${stats.total_builds} builds • ${stats.total_sales} sold` : 'Elite templates for every sport'}
             </Text>
