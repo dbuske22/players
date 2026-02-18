@@ -1,3 +1,4 @@
+(function() { if (typeof globalThis.Headers !== 'undefined') return ; try { var undici = require('undici') ; globalThis.Headers = undici.Headers ; globalThis.Request = undici.Request ; globalThis.Response = undici.Response ; if (!globalThis.fetch) globalThis.fetch = undici.fetch ; } catch(e) {} })() ; 
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
