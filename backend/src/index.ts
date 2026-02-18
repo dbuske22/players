@@ -9,9 +9,11 @@ import { db } from './db.js';
 import { signToken, authMiddleware, adminMiddleware, type JWTPayload } from './auth.js';
 import { sendPurchaseConfirmation, sendBuildApprovedEmail } from './email.js';
 
-const app = new Hono();
+type AppEnv = { Variables: { user: JWTPayload } };
+
+const app = new Hono<AppEnv>();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder', {
-  apiVersion: '2025-02-24.acacia',
+  apiVersion: '2026-01-28.clover',
 });
 
 const PLATFORM_FEE = 0.30; // 30%
