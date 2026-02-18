@@ -6,7 +6,7 @@ import { pbkdf2Sync, randomBytes } from 'crypto';
 import Stripe from 'stripe';
 import QRCode from 'qrcode';
 import { db } from './db.js';
-import { signToken, authMiddleware, adminMiddleware, type JWTPayload } from './auth.js';
+import { signToken, verifyToken, authMiddleware, adminMiddleware, type JWTPayload } from './auth.js';
 import { sendPurchaseConfirmation, sendBuildApprovedEmail } from './email.js';
 
 // --- password helpers (replaces bcryptjs, works in Node.js and Bun) ---
@@ -255,7 +255,6 @@ app.get('/builds/:id', async (c) => {
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice(7);
     try {
-      const { verifyToken } = await import('./auth.js');
       const payload = verifyToken(token);
       if (payload) {
         const { data: purchase } = await db
