@@ -28174,13 +28174,6 @@ var require_nodemailer = __commonJS({
   }
 });
 
-// api/index.ts
-var index_exports = {};
-__export(index_exports, {
-  default: () => handler
-});
-module.exports = __toCommonJS(index_exports);
-
 // backend/node_modules/hono/dist/compose.js
 var compose = (middleware, onError, onNotFound) => {
   return (context, next) => {
@@ -54964,6 +54957,7 @@ async function handler(req, res) {
     res.end(JSON.stringify({ error: "Internal server error" }));
   }
 }
+module.exports = handler;
 /*! Bundled license information:
 
 safe-buffer/index.js:

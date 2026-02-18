@@ -3,7 +3,8 @@ import { app } from '../backend/src/index.js';
 
 // Convert Node.js IncomingMessage to Web Fetch Request
 async function toRequest(req: IncomingMessage): Promise<Request> {
-  const proto = (req as IncomingMessage & { headers: { 'x-forwarded-proto'?: string } }).headers['x-forwarded-proto'] || 'https';
+  const proto =
+    (req.headers['x-forwarded-proto'] as string | undefined) || 'https';
   const host = req.headers['host'] || 'localhost';
   const url = `${proto}://${host}${req.url || '/'}`;
 
@@ -40,7 +41,7 @@ async function writeResponse(webRes: Response, res: ServerResponse): Promise<voi
   res.end(Buffer.from(body));
 }
 
-export default async function handler(req: IncomingMessage, res: ServerResponse) {
+async function handler(req: IncomingMessage, res: ServerResponse) {
   try {
     const webReq = await toRequest(req);
     const webRes = await app.fetch(webReq);
@@ -52,3 +53,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     res.end(JSON.stringify({ error: 'Internal server error' }));
   }
 }
+
+// CJS default export — Vercel expects module.exports = handler
+module.exports = handler;
