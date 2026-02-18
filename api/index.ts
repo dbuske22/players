@@ -2,11 +2,20 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { app } from '../backend/src/index.js';
 
 // Convert Node.js IncomingMessage to Web Fetch Request
+// Strips the /api prefix so Hono routes match correctly
 async function toRequest(req: IncomingMessage): Promise<Request> {
   const proto =
     (req.headers['x-forwarded-proto'] as string | undefined) || 'https';
   const host = req.headers['host'] || 'localhost';
-  const url = `${proto}://${host}${req.url || '/'}`;
+
+  // Strip /api prefix — Vercel routes /api/* → this function,
+  // but Hono is registered at / not /api/
+  let path = req.url || '/';
+  if (path.startsWith('/api')) {
+    path = path.slice(4) || '/';
+  }
+
+  const url = `${proto}://${host}${path}`;
 
   const chunks: Buffer[] = [];
   for await (const chunk of req) {

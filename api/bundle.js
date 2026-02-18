@@ -54916,7 +54916,11 @@ var src_default = {
 async function toRequest(req) {
   const proto = req.headers["x-forwarded-proto"] || "https";
   const host = req.headers["host"] || "localhost";
-  const url2 = `${proto}://${host}${req.url || "/"}`;
+  let path = req.url || "/";
+  if (path.startsWith("/api")) {
+    path = path.slice(4) || "/";
+  }
+  const url2 = `${proto}://${host}${path}`;
   const chunks = [];
   for await (const chunk of req) {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
