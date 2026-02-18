@@ -217,9 +217,7 @@ app.get('/builds', async (c) => {
 app.get('/builds/:id', async (c) => {
   const { data, error } = await db
     .from('builds')
-    .select(`
-      *, seller:seller_id(id, username, avatar_url, stripe_onboarded, total_earnings)
-    `)
+    .select(`*, seller:seller_id(id, username, avatar_url, stripe_onboarded, total_earnings)`)
     .eq('id', c.req.param('id'))
     .single();
   if (error || !data) return c.json({ error: 'Build not found' }, 404);
@@ -238,7 +236,39 @@ app.get('/builds/:id', async (c) => {
     ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10
     : null;
 
-  return c.json({ ...data, reviews: reviews || [], avg_rating: avgRating });
+  // Check if requester has purchased — only then reveal attributes, badges, import_code
+  let hasPurchased = false;
+  const authHeader = c.req.header('Authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    try {
+      const { verifyToken } = await import('./auth.js');
+      const payload = verifyToken(token);
+      if (payload) {
+        const { data: purchase } = await db
+          .from('purchases')
+          .select('id')
+          .eq('build_id', data.id)
+          .eq('buyer_id', payload.userId)
+          .eq('status', 'completed')
+          .maybeSingle();
+        hasPurchased = !!purchase;
+      }
+    } catch { /* invalid token — treat as unauthenticated */ }
+  }
+
+  const response = {
+    ...data,
+    attributes: hasPurchased ? data.attributes : [],
+    badges: hasPurchased ? data.badges : (data.badges ?? []).slice(0, 0),
+    import_code: hasPurchased ? data.import_code : null,
+    badge_count: (data.badges ?? []).length,
+    attribute_count: (data.attributes ?? []).length,
+    reviews: reviews || [],
+    avg_rating: avgRating,
+  };
+
+  return c.json(response);
 });
 
 const createBuildSchema = z.object({
