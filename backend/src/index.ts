@@ -28,7 +28,6 @@ const signupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   username: z.string().min(3).max(30),
-  role: z.enum(['buyer', 'seller']).default('buyer'),
 });
 
 app.post('/auth/signup', zValidator('json', signupSchema), async (c) => {
