@@ -1,209 +1,223 @@
-import { api } from '@/lib/api';
-import { THEME } from '@/lib/theme';
-import type { Build, Purchase } from '@/lib/types';
-import { useRouter } from 'expo-router';
-import { useColorScheme } from 'nativewind';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  Text,
-  View,
+  View, Text, Pressable, ScrollView,
+  ActivityIndicator, RefreshControl,
 } from 'react-native';
-
-const CURRENT_USER = { id: 'user1', name: 'MyPlayer2K' };
+import { useRouter } from 'expo-router';
+import { useColorScheme } from 'nativewind';
+import { THEME } from '@/lib/theme';
+import { purchasesApi, buildsApi, stripeApi } from '@/lib/api';
+import { useAuthStore } from '@/lib/store';
+import { PLAYSTYLE_DIMENSIONS } from '@/lib/compatibility';
+import type { Build } from '@/lib/types';
 
 export default function ProfileScreen() {
   const { colorScheme } = useColorScheme();
-  const theme = THEME[colorScheme ?? 'light'];
+  const t = THEME[colorScheme ?? 'light'];
   const router = useRouter();
+  const { token, user, logout } = useAuthStore();
 
-  const [listings, setListings] = useState<Build[]>([]);
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [myBuilds, setMyBuilds] = useState<Build[]>([]);
+  const [earnings, setEarnings] = useState(0);
+  const [purchaseCount, setPurchaseCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [stripeLoading, setStripeLoading] = useState(false);
 
   const load = useCallback(async () => {
+    if (!token) { setLoading(false); return; }
     try {
-      const [myListings, myPurchases] = await Promise.all([
-        api.getMyListings(CURRENT_USER.id),
-        api.getMyPurchases(CURRENT_USER.id),
+      const [builds, earningsData, purchases] = await Promise.all([
+        purchasesApi.myBuilds(token),
+        purchasesApi.myEarnings(token),
+        purchasesApi.myPurchases(token),
       ]);
-      setListings(myListings);
-      setPurchases(myPurchases);
-    } catch {
-      // silent
+      setMyBuilds(builds);
+      setEarnings(earningsData.total_earned);
+      setPurchaseCount(purchases.length);
+    } catch { /* silent */ }
+    finally { setLoading(false); setRefreshing(false); }
+  }, [token]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleStripeConnect = async () => {
+    if (!token) return;
+    setStripeLoading(true);
+    try {
+      const { url, error } = await stripeApi.connect(token);
+      if (error) {
+        // Stripe not configured yet
+        alert('Stripe Connect requires a valid Stripe secret key. Add STRIPE_SECRET_KEY to backend .env');
+      } else if (url) {
+        // In web, open the URL
+        if (typeof window !== 'undefined') window.open(url, '_blank');
+      }
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Could not connect Stripe');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setStripeLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-    load();
-  }, [load]);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    load();
   };
 
-  const totalEarned = listings
-    .filter((b) => b.sold)
-    .reduce((sum, b) => sum + b.price, 0);
-  const totalSpent = purchases.reduce((sum, p) => sum + p.price, 0);
-  const activeListings = listings.filter((b) => !b.sold).length;
-  const soldBuilds = listings.filter((b) => b.sold).length;
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/auth/login');
+  };
+
+  if (!user) {
+    return (
+      <View style={{ flex: 1, backgroundColor: t.background, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <Text style={{ fontSize: 48, marginBottom: 16 }}>👤</Text>
+        <Text style={{ color: t.foreground, fontSize: 18, fontWeight: '700', marginBottom: 16, textAlign: 'center' }}>Sign in to view your profile</Text>
+        <Pressable onPress={() => router.push('/auth/login')} style={{ backgroundColor: '#7C3AED', borderRadius: 12, padding: 14, paddingHorizontal: 24 }}>
+          <Text style={{ color: '#fff', fontWeight: '700' }}>Sign In</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const activeListing = myBuilds.filter((b) => b.status === 'active').length;
+  const soldCount = myBuilds.filter((b) => b.status === 'sold').length;
+  const pendingCount = myBuilds.filter((b) => b.status === 'pending').length;
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <View style={{ flex: 1, backgroundColor: t.background }}>
       {/* Header */}
-      <View style={{ backgroundColor: '#7C3AED', paddingTop: 56, paddingBottom: 24, paddingHorizontal: 20 }}>
-        <View style={{ alignItems: 'center' }}>
-          <View
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 36,
-              backgroundColor: 'rgba(255,255,255,0.25)',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 10,
-            }}>
-            <Text style={{ color: '#fff', fontWeight: '900', fontSize: 28 }}>
-              {CURRENT_USER.name.charAt(0).toUpperCase()}
-            </Text>
+      <View style={{ backgroundColor: '#7C3AED', paddingTop: 56, paddingBottom: 24, paddingHorizontal: 20, alignItems: 'center' }}>
+        <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+          <Text style={{ color: '#fff', fontWeight: '900', fontSize: 28 }}>{user.username.charAt(0).toUpperCase()}</Text>
+        </View>
+        <Text style={{ color: '#fff', fontWeight: '900', fontSize: 22 }}>{user.username}</Text>
+        <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 2 }}>{user.email}</Text>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 }}>
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700', textTransform: 'capitalize' }}>{user.role}</Text>
           </View>
-          <Text style={{ color: '#fff', fontWeight: '900', fontSize: 22 }}>{CURRENT_USER.name}</Text>
-          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 2 }}>2K26 Build Trader</Text>
+          {user.stripe_onboarded && (
+            <View style={{ backgroundColor: '#10B981', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 }}>
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>✓ Stripe Connected</Text>
+            </View>
+          )}
+          {user.role === 'admin' && (
+            <View style={{ backgroundColor: '#FFD700', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 }}>
+              <Text style={{ color: '#000', fontSize: 12, fontWeight: '700' }}>⚙ Admin</Text>
+            </View>
+          )}
         </View>
       </View>
 
       <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7C3AED" />}
-        contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor="#7C3AED" />}
+        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+
         {loading ? (
-          <View style={{ alignItems: 'center', marginTop: 40 }}>
-            <ActivityIndicator size="large" color="#7C3AED" />
-          </View>
+          <ActivityIndicator size="large" color="#7C3AED" style={{ marginTop: 40 }} />
         ) : (
           <>
             {/* Stats grid */}
-            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
               {[
-                { label: 'Active Listings', value: activeListings, color: '#7C3AED' },
-                { label: 'Builds Sold', value: soldBuilds, color: '#059669' },
+                { label: 'Active Listings', val: activeListing, color: '#7C3AED', icon: '📦' },
+                { label: 'Builds Sold', val: soldCount, color: '#10B981', icon: '✅' },
+                { label: 'Pending Review', val: pendingCount, color: '#F59E0B', icon: '⏳' },
+                { label: 'Purchases', val: purchaseCount, color: '#3B82F6', icon: '🛒' },
               ].map((s) => (
-                <View
-                  key={s.label}
-                  style={{
-                    flex: 1,
-                    backgroundColor: theme.card,
-                    borderRadius: 14,
-                    padding: 16,
-                    borderWidth: 1,
-                    borderColor: theme.border,
-                    alignItems: 'center',
-                  }}>
-                  <Text style={{ color: s.color, fontWeight: '900', fontSize: 28 }}>{s.value}</Text>
-                  <Text style={{ color: theme.mutedForeground, fontSize: 12, marginTop: 4, textAlign: 'center' }}>
-                    {s.label}
-                  </Text>
+                <View key={s.label} style={{ width: '47%', backgroundColor: t.card, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: t.border, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 22, marginBottom: 4 }}>{s.icon}</Text>
+                  <Text style={{ color: s.color, fontWeight: '900', fontSize: 26 }}>{s.val}</Text>
+                  <Text style={{ color: t.mutedForeground, fontSize: 12, marginTop: 2, textAlign: 'center' }}>{s.label}</Text>
                 </View>
               ))}
             </View>
 
-            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
-              {[
-                { label: 'VC Earned', value: totalEarned.toLocaleString(), color: '#F59E0B' },
-                { label: 'VC Spent', value: totalSpent.toLocaleString(), color: '#DC2626' },
-              ].map((s) => (
-                <View
-                  key={s.label}
-                  style={{
-                    flex: 1,
-                    backgroundColor: theme.card,
-                    borderRadius: 14,
-                    padding: 16,
-                    borderWidth: 1,
-                    borderColor: theme.border,
-                    alignItems: 'center',
-                  }}>
-                  <Text style={{ color: s.color, fontWeight: '900', fontSize: 20 }}>{s.value}</Text>
-                  <Text style={{ color: theme.mutedForeground, fontSize: 12, marginTop: 4 }}>{s.label}</Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Recent activity */}
-            <Text style={{ color: theme.foreground, fontWeight: '800', fontSize: 18, marginBottom: 14 }}>
-              Recent Purchases
-            </Text>
-
-            {purchases.length === 0 ? (
-              <View
-                style={{
-                  backgroundColor: theme.muted,
-                  borderRadius: 14,
-                  padding: 24,
-                  alignItems: 'center',
-                }}>
-                <Text style={{ fontSize: 36, marginBottom: 8 }}>🛒</Text>
-                <Text style={{ color: theme.mutedForeground, fontSize: 14 }}>No purchases yet</Text>
+            {/* Earnings */}
+            <View style={{ backgroundColor: '#EDE9FE', borderRadius: 14, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#7C3AED', fontSize: 13 }}>Total Earnings</Text>
+                <Text style={{ color: '#5B21B6', fontWeight: '900', fontSize: 28 }}>${earnings.toFixed(2)}</Text>
+                <Text style={{ color: '#9CA3AF', fontSize: 11 }}>70% of each sale</Text>
               </View>
-            ) : (
-              purchases.slice(0, 5).map((p) => {
-                const build = p.build;
-                return (
-                  <View
-                    key={p.id}
-                    style={{
-                      backgroundColor: theme.card,
-                      borderRadius: 12,
-                      padding: 14,
-                      marginBottom: 10,
-                      borderWidth: 1,
-                      borderColor: theme.border,
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}>
-                    <View>
-                      <Text style={{ color: theme.foreground, fontWeight: '700', fontSize: 14 }}>
-                        {build?.name ?? 'Build'}
-                      </Text>
-                      <Text style={{ color: theme.mutedForeground, fontSize: 12 }}>
-                        {build?.position} · {build?.archetype}
-                      </Text>
+              <Text style={{ fontSize: 36 }}>💰</Text>
+            </View>
+
+            {/* Seller Stripe banner */}
+            {user.role === 'seller' && !user.stripe_onboarded && (
+              <Pressable
+                onPress={handleStripeConnect}
+                disabled={stripeLoading}
+                style={{ backgroundColor: '#1E40AF', borderRadius: 14, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                {stripeLoading
+                  ? <ActivityIndicator color="#fff" />
+                  : <>
+                    <Text style={{ fontSize: 28 }}>💳</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Connect Stripe to Get Paid</Text>
+                      <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>Receive 70% of every sale directly to your bank</Text>
                     </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ color: '#DC2626', fontWeight: '700', fontSize: 14 }}>
-                        -{p.price.toLocaleString()} VC
-                      </Text>
-                      <Text style={{ color: theme.mutedForeground, fontSize: 11 }}>
-                        {new Date(p.purchasedAt).toLocaleDateString()}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })
+                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 18 }}>→</Text>
+                  </>
+                }
+              </Pressable>
             )}
 
-            {purchases.length > 5 && (
-              <Text
-                style={{
-                  color: '#7C3AED',
-                  fontWeight: '600',
-                  fontSize: 13,
-                  textAlign: 'center',
-                  marginTop: 4,
-                }}
-                onPress={() => router.push('/(tabs)/my-builds')}>
-                View all {purchases.length} purchases →
-              </Text>
+            {/* Playstyle snapshot */}
+            {user.playstyle_vector && (
+              <View style={{ backgroundColor: t.card, borderRadius: 14, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: t.border }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <Text style={{ color: t.foreground, fontWeight: '800', fontSize: 15 }}>⚡ My Playstyle DNA</Text>
+                  <Pressable onPress={() => router.push('/onboarding')}>
+                    <Text style={{ color: '#7C3AED', fontSize: 13, fontWeight: '600' }}>Edit</Text>
+                  </Pressable>
+                </View>
+                {PLAYSTYLE_DIMENSIONS.slice(0, 4).map((dim, i) => {
+                  const val = user.playstyle_vector![i];
+                  return (
+                    <View key={dim.key} style={{ marginBottom: 8 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
+                        <Text style={{ color: t.mutedForeground, fontSize: 11 }} numberOfLines={1}>
+                          {val >= 5 ? dim.high : dim.low}
+                        </Text>
+                        <Text style={{ color: '#7C3AED', fontWeight: '700', fontSize: 11 }}>{val}/10</Text>
+                      </View>
+                      <View style={{ height: 5, backgroundColor: t.muted, borderRadius: 3 }}>
+                        <View style={{ height: 5, backgroundColor: '#7C3AED', borderRadius: 3, width: `${(val / 10) * 100}%` }} />
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
             )}
+
+            {/* Quick links */}
+            <View style={{ gap: 10, marginBottom: 16 }}>
+              {[
+                { label: '🛒 Browse Marketplace', onPress: () => router.push('/(tabs)') },
+                { label: '💰 Sell a Build', onPress: () => router.push('/(tabs)/sell') },
+                { label: '📊 Dashboard', onPress: () => router.push('/(tabs)/dashboard') },
+                { label: '📋 Terms of Service', onPress: () => router.push('/tos') },
+                ...(user.role === 'admin' ? [{ label: '⚙ Admin Panel', onPress: () => router.push('/admin') }] : []),
+              ].map((link) => (
+                <Pressable
+                  key={link.label}
+                  onPress={link.onPress}
+                  style={{ backgroundColor: t.card, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: t.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ color: t.foreground, fontWeight: '600', fontSize: 14 }}>{link.label}</Text>
+                  <Text style={{ color: t.mutedForeground }}>›</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {/* Sign out */}
+            <Pressable
+              onPress={handleLogout}
+              style={{ backgroundColor: '#FEE2E2', borderRadius: 12, padding: 14, alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ color: '#DC2626', fontWeight: '700', fontSize: 15 }}>Sign Out</Text>
+            </Pressable>
+
+            <Text style={{ color: t.mutedForeground, fontSize: 11, textAlign: 'center', lineHeight: 16, paddingHorizontal: 16, marginBottom: 20 }}>
+              Templates are user-generated; no affiliation with game publishers.{'\n'}Predictions are estimates only. Users assume risk.
+            </Text>
           </>
         )}
       </ScrollView>
