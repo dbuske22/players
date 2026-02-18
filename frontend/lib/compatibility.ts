@@ -64,7 +64,7 @@ export function calcCompatibility(user: User, build: Build): CompatibilityResult
 
   // Predicted win boost: based on score + performance
   const baseBoost = ((score - 50) / 50) * 25; // -25% to +25%
-  const perfBoost = ((build.performance?.win_rate || 50) - 50) * 0.3;
+  const perfBoost = ((build.performance?.shooting || 50) - 50) * 0.3;
   const predictedWinBoost = Math.round(Math.max(-15, Math.min(30, baseBoost + perfBoost)));
 
   return {
