@@ -53,8 +53,16 @@ async function waitForNgrok(maxRetries = 15, delayMs = 2000) {
     }
   }
 
-  // Fallback
-  const fallbackUrl = 'http://localhost:3002';
+  // Fallback: use the Orchids deployed backend URL if available
+  let fallbackUrl = 'http://localhost:3002';
+  try {
+    const orchidsConfig = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../../../.orchids/orchids.json'), 'utf-8')
+    );
+    if (orchidsConfig.mobileBackendUrl) {
+      fallbackUrl = `https://${orchidsConfig.mobileBackendUrl}`;
+    }
+  } catch {}
   await writeBackendUrlToEnv(fallbackUrl);
   console.log(`⚠️  Ngrok not detected, using: ${fallbackUrl}`);
   console.log('✅ Ready to start frontend!');
