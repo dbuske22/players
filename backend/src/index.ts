@@ -12,22 +12,30 @@ import { sendPurchaseConfirmation, sendBuildApprovedEmail } from './email.js';
 // --- password helpers (replaces bcryptjs, works in Node.js and Bun) ---
 function hashPassword(password: string): string {
   const salt = randomBytes(16).toString('hex');
-  const hash = pbkdf2Sync(password, salt, 100_000, 64, 'sha512').toString('hex');
+  const hash = pbkdf2Sync(password, salt, 10_000, 64, 'sha512').toString('hex');
   return `${salt}:${hash}`;
 }
 function verifyPassword(password: string, stored: string): boolean {
   const [salt, hash] = stored.split(':');
   if (!salt || !hash) return false;
-  const attempt = pbkdf2Sync(password, salt, 100_000, 64, 'sha512').toString('hex');
+  const attempt = pbkdf2Sync(password, salt, 10_000, 64, 'sha512').toString('hex');
   return attempt === hash;
 }
 
 type AppEnv = { Variables: { user: JWTPayload } };
 
 const app = new Hono<AppEnv>();
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder', {
-  apiVersion: '2026-01-28.clover',
-});
+
+// Defer Stripe init to avoid blocking cold start when key is placeholder
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!_stripe) {
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder', {
+      apiVersion: '2026-01-28.clover',
+    });
+  }
+  return _stripe;
+}
 
 const PLATFORM_FEE = 0.30; // 30%
 
@@ -129,7 +137,7 @@ app.post('/stripe/connect', authMiddleware, async (c) => {
   let accountId = user?.stripe_account_id;
   if (!accountId) {
     try {
-      const account = await stripe.accounts.create({ type: 'express', email });
+      const account = await getStripe().accounts.create({ type: 'express', email });
       accountId = account.id;
       await db.from('users').update({ stripe_account_id: accountId }).eq('id', userId);
     } catch {
@@ -139,7 +147,7 @@ app.post('/stripe/connect', authMiddleware, async (c) => {
 
   try {
     const origin = c.req.header('origin') || 'http://localhost:8081';
-    const link = await stripe.accountLinks.create({
+    const link = await getStripe().accountLinks.create({
       account: accountId,
       refresh_url: `${origin}/seller/onboarding?refresh=true`,
       return_url: `${origin}/seller/onboarding?success=true`,
@@ -156,7 +164,7 @@ app.get('/stripe/connect/status', authMiddleware, async (c) => {
   const { data: user } = await db.from('users').select('stripe_account_id, stripe_onboarded').eq('id', userId).single();
   if (!user?.stripe_account_id) return c.json({ onboarded: false });
   try {
-    const account = await stripe.accounts.retrieve(user.stripe_account_id);
+    const account = await getStripe().accounts.retrieve(user.stripe_account_id);
     const onboarded = account.charges_enabled && account.details_submitted;
     if (onboarded && !user.stripe_onboarded) {
       await db.from('users').update({ stripe_onboarded: true }).eq('id', userId);
@@ -430,7 +438,7 @@ app.post('/builds/:id/checkout', authMiddleware, async (c) => {
     paymentIntentData.transfer_data = { destination: build.seller.stripe_account_id };
   }
 
-  const intent = await stripe.paymentIntents.create(paymentIntentData);
+  const intent = await getStripe().paymentIntents.create(paymentIntentData);
   return c.json({ client_secret: intent.client_secret, payment_intent_id: intent.id, amount: build.price });
 });
 
@@ -449,7 +457,7 @@ app.post('/builds/:id/purchase/confirm', authMiddleware, async (c) => {
   let transferId: string | undefined;
 
   if (payment_intent_id && !payment_intent_id.startsWith('demo_')) {
-    const intent = await stripe.paymentIntents.retrieve(payment_intent_id);
+    const intent = await getStripe().paymentIntents.retrieve(payment_intent_id);
     intentStatus = intent.status;
     if (intentStatus !== 'succeeded') return c.json({ error: 'Payment not completed' }, 400);
   }
