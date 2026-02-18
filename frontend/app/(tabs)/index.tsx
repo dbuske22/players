@@ -25,6 +25,11 @@ const GAME_LABEL: Record<string, string> = {
 };
 
 const SORTS = [
+  { label: 'Newest', value: 'newest' },
+  { label: 'Popular', value: 'popular' },
+  { label: 'Price ↑', value: 'price_asc' },
+  { label: 'Price ↓', value: 'price_desc' },
+];
 
 const GAME_COLORS: Record<string, string> = {
   basketball: '#F97316',
