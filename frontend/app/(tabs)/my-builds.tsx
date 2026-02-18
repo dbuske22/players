@@ -227,8 +227,7 @@ export default function MyBuildsScreen() {
     }
   };
 
-  const data = tab === 'listings' ? listings : purchases;
-  const isEmpty = data.length === 0;
+  const isEmpty = tab === 'listings' ? listings.length === 0 : purchases.length === 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -276,31 +275,36 @@ export default function MyBuildsScreen() {
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator size="large" color="#7C3AED" />
         </View>
-      ) : (
+      ) : tab === 'listings' ? (
         <FlatList
-          data={data}
+          data={listings}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) =>
-            tab === 'listings' ? (
-              <ListingCard build={item as Build} theme={theme} onDelete={handleDelete} />
-            ) : (
-              <PurchaseCard purchase={item as Purchase} theme={theme} />
-            )
-          }
+          renderItem={({ item }) => <ListingCard build={item} theme={theme} onDelete={handleDelete} />}
           contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7C3AED" />}
           ListEmptyComponent={
             <View style={{ alignItems: 'center', marginTop: 60 }}>
-              <Text style={{ fontSize: 40, marginBottom: 12 }}>
-                {tab === 'listings' ? '📋' : '🛒'}
-              </Text>
-              <Text style={{ color: theme.foreground, fontSize: 18, fontWeight: '700' }}>
-                {tab === 'listings' ? 'No listings yet' : 'No purchases yet'}
-              </Text>
+              <Text style={{ fontSize: 40, marginBottom: 12 }}>📋</Text>
+              <Text style={{ color: theme.foreground, fontSize: 18, fontWeight: '700' }}>No listings yet</Text>
               <Text style={{ color: theme.mutedForeground, fontSize: 14, marginTop: 6, textAlign: 'center' }}>
-                {tab === 'listings'
-                  ? 'Head to Sell Build to list your first build'
-                  : 'Browse the marketplace to find builds'}
+                Head to Sell Build to list your first build
+              </Text>
+            </View>
+          }
+        />
+      ) : (
+        <FlatList
+          data={purchases}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <PurchaseCard purchase={item} theme={theme} />}
+          contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7C3AED" />}
+          ListEmptyComponent={
+            <View style={{ alignItems: 'center', marginTop: 60 }}>
+              <Text style={{ fontSize: 40, marginBottom: 12 }}>🛒</Text>
+              <Text style={{ color: theme.foreground, fontSize: 18, fontWeight: '700' }}>No purchases yet</Text>
+              <Text style={{ color: theme.mutedForeground, fontSize: 14, marginTop: 6, textAlign: 'center' }}>
+                Browse the marketplace to find builds
               </Text>
             </View>
           }
