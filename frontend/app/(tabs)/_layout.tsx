@@ -30,35 +30,42 @@ export default function TabLayout() {
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Marketplace',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🛒" focused={focused} />,
-        }}
-      />
         <Tabs.Screen
-          name="sell"
+          name="index"
+          options={{
+            title: 'Marketplace',
+            tabBarIcon: ({ focused }) => <TabIcon emoji="🛒" focused={focused} />,
+          }}
+        />
+          <Tabs.Screen
+            name="sell"
+            options={{ href: null }}
+          />
+        <Tabs.Screen
+          name="leaderboard"
+          options={{
+            title: 'Top Builds',
+            tabBarIcon: ({ focused }) => <TabIcon emoji="🏆" focused={focused} />,
+          }}
+        />
+        <Tabs.Screen
+          name="dashboard"
+          options={{
+            title: 'Dashboard',
+            tabBarIcon: ({ focused }) => <TabIcon emoji="📊" focused={focused} />,
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: 'Profile',
+            tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} />,
+          }}
+        />
+        <Tabs.Screen
+          name="my-builds"
           options={{ href: null }}
         />
-      <Tabs.Screen
-        name="dashboard"
-        options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📊" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="my-builds"
-        options={{ href: null }}
-      />
     </Tabs>
   );
 }
