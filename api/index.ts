@@ -1,4 +1,20 @@
 import type { IncomingMessage, ServerResponse } from 'http';
+
+// Polyfill Web Fetch API for Node < 18 environments (Vercel may run Node 16)
+// Node 18+ has these globally via undici; Node 16 does not.
+if (typeof globalThis.Headers === 'undefined') {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const undici = require('undici');
+    globalThis.Headers = undici.Headers;
+    globalThis.Request = undici.Request;
+    globalThis.Response = undici.Response;
+    if (!globalThis.fetch) globalThis.fetch = undici.fetch;
+  } catch {
+    // undici not available — we're on a Node version that should have these globals
+  }
+}
+
 import { app } from '../backend/src/index.js';
 
 async function toRequest(req: IncomingMessage): Promise<Request> {
@@ -13,11 +29,14 @@ async function toRequest(req: IncomingMessage): Promise<Request> {
 
   const url = `${proto}://${host}${path}`;
 
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-  const body = chunks.length > 0 ? Buffer.concat(chunks) : null;
+  const body = await new Promise<Buffer | null>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer | string) => {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    });
+    req.on('end', () => resolve(chunks.length > 0 ? Buffer.concat(chunks) : null));
+    req.on('error', reject);
+  });
 
   const headers = new Headers();
   for (const [key, value] of Object.entries(req.headers)) {
@@ -41,8 +60,8 @@ async function writeResponse(webRes: Response, res: ServerResponse): Promise<voi
   webRes.headers.forEach((value, key) => {
     res.setHeader(key, value);
   });
-  const body = await webRes.arrayBuffer();
-  res.end(Buffer.from(body));
+  const buf = await webRes.arrayBuffer();
+  res.end(Buffer.from(buf));
 }
 
 async function handler(req: IncomingMessage, res: ServerResponse) {
