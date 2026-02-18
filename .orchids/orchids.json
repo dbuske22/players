@@ -2,6 +2,9 @@
   "projectId": "15462ae1-0e06-4697-900b-4ab75569f195",
   "createdAt": 1771383473420,
   "version": "1.0",
-  "startupCommands": [],
-  "templateId": "auto"
+  "startupCommands": [
+    "cd frontend; bun install; bun run dev",
+    "(command -v ngrok >/dev/null 2>&1 || npm install -g ngrok); cd backend; bun install; bun run dev:tunnel"
+  ],
+  "templateId": "react-native"
 }
