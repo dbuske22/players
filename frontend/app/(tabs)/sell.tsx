@@ -85,7 +85,7 @@ export default function SellScreen() {
     if (!token) { router.push('/auth/login'); return; }
     if (!title || !position || !archetype || !price) { setError('Please fill in all required fields'); return; }
     const priceNum = parseFloat(price);
-    if (isNaN(priceNum) || priceNum < 1 || priceNum > 10) { setError('Price must be between $1 and $10'); return; }
+    if (isNaN(priceNum) || priceNum < 3.99 || priceNum > 7.99) { setError('Price must be between $3.99 and $7.99'); return; }
 
     // Ensure all attrs are filled
     const finalAttrs: BuildAttribute[] = attrList.map((key) => ({
