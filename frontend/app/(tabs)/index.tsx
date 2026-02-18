@@ -90,21 +90,15 @@ function BuildCard({ build, user }: { build: Build; user: ReturnType<typeof useA
           ))}
         </View>
 
-        {/* Badges */}
-        {build.badges?.length > 0 && (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
-            {build.badges.slice(0, 4).map((badge) => (
-              <View key={badge} style={{ backgroundColor: '#EDE9FE', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
-                <Text style={{ color: '#7C3AED', fontSize: 11, fontWeight: '600' }}>{badge}</Text>
-              </View>
-            ))}
-            {build.badges.length > 4 && (
-              <View style={{ backgroundColor: t.muted, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
-                <Text style={{ color: t.mutedForeground, fontSize: 11 }}>+{build.badges.length - 4} more</Text>
-              </View>
-            )}
+          {/* Badges — locked, show count only */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+            <View style={{ backgroundColor: '#EDE9FE', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={{ fontSize: 11 }}>🔒</Text>
+              <Text style={{ color: '#7C3AED', fontSize: 11, fontWeight: '600' }}>
+                {build.badge_count ?? (build.badges?.length ?? 0)} badges unlocked after purchase
+              </Text>
+            </View>
           </View>
-        )}
 
         {/* Compatibility */}
         {compat && (
