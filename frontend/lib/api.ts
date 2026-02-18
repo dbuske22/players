@@ -1,21 +1,9 @@
-/**
- * API Configuration
- *
- * The backend URL is automatically configured:
- * - In development: Read from EXPO_PUBLIC_BACKEND_URL (set by ngrok script)
- * - In production: Use your deployed API URL
- */
+import type { Build, Purchase } from './types';
 
-// Get the backend URL from environment variables
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:3002';
 
-/**
- * Simple fetch wrapper for API calls
- */
-export async function apiRequest<T = any>(endpoint: string, options?: RequestInit): Promise<T> {
-  const url = `${BACKEND_URL}${endpoint}`;
-
-  const response = await fetch(url, {
+async function req<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${BACKEND_URL}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -23,20 +11,33 @@ export async function apiRequest<T = any>(endpoint: string, options?: RequestIni
       ...options?.headers,
     },
   });
-
-  if (!response.ok) {
-    throw new Error(`API request failed: ${response.statusText}`);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
   }
-
-  return response.json();
+  return res.json();
 }
 
-/**
- * Example usage:
- *
- * import { apiRequest } from '@/lib/api';
- *
- * const data = await apiRequest('/users');
- */
+export const api = {
+  getBuilds: (params?: { position?: string; maxPrice?: number; sort?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.position) qs.set('position', params.position);
+    if (params?.maxPrice) qs.set('maxPrice', String(params.maxPrice));
+    if (params?.sort) qs.set('sort', params.sort);
+    const query = qs.toString();
+    return req<Build[]>(`/builds${query ? `?${query}` : ''}`);
+  },
+  getBuild: (id: string) => req<Build>(`/builds/${id}`),
+  createBuild: (data: Omit<Build, 'id' | 'overallRating' | 'sold' | 'createdAt'>) =>
+    req<Build>('/builds', { method: 'POST', body: JSON.stringify(data) }),
+  deleteBuild: (id: string) => req<{ success: boolean }>(`/builds/${id}`, { method: 'DELETE' }),
+  purchaseBuild: (id: string, buyerId: string, buyerName: string) =>
+    req<Purchase>(`/builds/${id}/purchase`, {
+      method: 'POST',
+      body: JSON.stringify({ buyerId, buyerName }),
+    }),
+  getMyListings: (sellerId: string) => req<Build[]>(`/users/${sellerId}/builds`),
+  getMyPurchases: (buyerId: string) => req<Purchase[]>(`/users/${buyerId}/purchases`),
+};
 
 export { BACKEND_URL };
