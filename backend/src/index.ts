@@ -67,7 +67,7 @@ app.get('/auth/me', authMiddleware, async (c) => {
   const { userId } = c.get('user') as JWTPayload;
   const { data: user } = await db
     .from('users')
-    .select('id, email, username, role, playstyle_vector, playstyle_labels, stripe_onboarded, stripe_account_id, avatar_url, total_earnings, total_spent, created_at')
+    .select('id, email, username, role, playstyle_vector, playstyle_labels, preferred_sport, stripe_onboarded, stripe_account_id, avatar_url, total_earnings, total_spent, created_at')
     .eq('id', userId)
     .single();
   if (!user) return c.json({ error: 'User not found' }, 404);
