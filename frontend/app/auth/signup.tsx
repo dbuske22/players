@@ -45,38 +45,14 @@ export default function SignupScreen() {
           </Text>
         </View>
 
-        <View style={{ padding: 24 }}>
-          {error ? (
-            <View style={{ backgroundColor: '#FEE2E2', borderRadius: 10, padding: 12, marginBottom: 16 }}>
-              <Text style={{ color: '#DC2626', fontSize: 14 }}>{error}</Text>
-            </View>
-          ) : null}
+          <View style={{ padding: 24 }}>
+            {error ? (
+              <View style={{ backgroundColor: '#FEE2E2', borderRadius: 10, padding: 12, marginBottom: 16 }}>
+                <Text style={{ color: '#DC2626', fontSize: 14 }}>{error}</Text>
+              </View>
+            ) : null}
 
-          {/* Role Selection */}
-          <Text style={{ color: t.foreground, fontWeight: '700', fontSize: 15, marginBottom: 12 }}>I want to...</Text>
-          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
-            {(['buyer', 'seller'] as const).map((r) => (
-              <Pressable
-                key={r}
-                onPress={() => setRole(r)}
-                style={{
-                  flex: 1, borderRadius: 12, padding: 16, alignItems: 'center',
-                  borderWidth: 2,
-                  borderColor: role === r ? '#7C3AED' : t.border,
-                  backgroundColor: role === r ? '#EDE9FE' : t.card,
-                }}>
-                <Text style={{ fontSize: 24, marginBottom: 6 }}>{r === 'buyer' ? '🛒' : '💰'}</Text>
-                <Text style={{ color: role === r ? '#7C3AED' : t.foreground, fontWeight: '700', fontSize: 14 }}>
-                  {r === 'buyer' ? 'Buy Builds' : 'Sell Builds'}
-                </Text>
-                <Text style={{ color: t.mutedForeground, fontSize: 11, marginTop: 4, textAlign: 'center' }}>
-                  {r === 'buyer' ? 'Browse & purchase templates' : 'Create & sell your builds'}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          {[
+            {[
             { label: 'Username', value: username, setter: setUsername, placeholder: 'ProGamer99', type: 'default' as const },
             { label: 'Email', value: email, setter: setEmail, placeholder: 'you@example.com', type: 'email-address' as const },
             { label: 'Password (min 8 chars)', value: password, setter: setPassword, placeholder: '••••••••', type: 'default' as const, secure: true },
