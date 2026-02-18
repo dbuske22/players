@@ -195,3 +195,11 @@ export const adminApi = {
 export const statsApi = {
   get: () => request<{ total_builds: number; total_users: number; total_sales: number }>('/stats'),
 };
+
+// ─── Leaderboard ─────────────────────────────────────────────────────────────
+export const leaderboardApi = {
+  get: (game_type?: string) => {
+    const q = game_type ? `?game_type=${game_type}` : '';
+    return request<unknown[]>(`/leaderboard${q}`);
+  },
+};
