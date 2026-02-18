@@ -2,6 +2,9 @@
   "name": "players-app",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
     "@hono/zod-validator": "^0.7.4",
     "@supabase/supabase-js": "^2.96.0",
