@@ -54214,10 +54214,13 @@ var db = createClient(supabaseUrl, supabaseKey, {
     autoRefreshToken: false,
     detectSessionInUrl: false
   },
+  // realtime is disabled — no channels used in this API,
+  // and keeping it alive would block the Vercel serverless function
   realtime: {
     params: { eventsPerSecond: -1 }
   }
 });
+db.realtime.disconnect();
 
 // backend/src/auth.ts
 var import_jsonwebtoken = __toESM(require_jsonwebtoken(), 1);

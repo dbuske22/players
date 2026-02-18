@@ -9,7 +9,13 @@ export const db = createClient(supabaseUrl, supabaseKey, {
     autoRefreshToken: false,
     detectSessionInUrl: false,
   },
+  // realtime is disabled — no channels used in this API,
+  // and keeping it alive would block the Vercel serverless function
   realtime: {
     params: { eventsPerSecond: -1 },
   },
 });
+
+// Disconnect realtime immediately to prevent keeping the event loop open
+// in serverless environments (Vercel, AWS Lambda, etc.)
+db.realtime.disconnect();
