@@ -37,13 +37,10 @@ export default function TabLayout() {
           tabBarIcon: ({ focused }) => <TabIcon emoji="🛒" focused={focused} />,
         }}
       />
-      <Tabs.Screen
-        name="sell"
-        options={{
-          title: 'Sell',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="➕" focused={focused} />,
-        }}
-      />
+        <Tabs.Screen
+          name="sell"
+          options={{ href: null }}
+        />
       <Tabs.Screen
         name="dashboard"
         options={{
