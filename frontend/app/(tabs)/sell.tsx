@@ -216,7 +216,7 @@ export default function SellScreen() {
               </View>
 
               <View>
-                <Text style={{ color: t.mutedForeground, fontSize: 13, marginBottom: 6 }}>Price ($1.00 – $10.00) *</Text>
+                  <Text style={{ color: t.mutedForeground, fontSize: 13, marginBottom: 6 }}>Price ($3.99 – $7.99) *</Text>
                 <TextInput
                   value={price}
                   onChangeText={setPrice}
