@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, Pressable, ScrollView, TextInput,
-  FlatList, ActivityIndicator, RefreshControl, Image,
+  FlatList, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'nativewind';
