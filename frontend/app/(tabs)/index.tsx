@@ -1,141 +1,122 @@
-import { api } from '@/lib/api';
-import { THEME } from '@/lib/theme';
-import type { Build, Position } from '@/lib/types';
-import { useRouter } from 'expo-router';
-import { useColorScheme } from 'nativewind';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
+  View, Text, Pressable, ScrollView, TextInput,
+  FlatList, ActivityIndicator, RefreshControl, Image,
 } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useColorScheme } from 'nativewind';
+import { THEME } from '@/lib/theme';
+import { buildsApi, statsApi } from '@/lib/api';
+import { calcCompatibility, getMatchColor } from '@/lib/compatibility';
+import { useAuthStore } from '@/lib/store';
+import type { Build, GameType } from '@/lib/types';
 
-const POSITIONS: (Position | 'ALL')[] = ['ALL', 'PG', 'SG', 'SF', 'PF', 'C'];
+const GAME_TYPES: { label: string; value: GameType | 'all'; icon: string }[] = [
+  { label: 'All', value: 'all', icon: '🏆' },
+  { label: 'Basketball', value: 'basketball', icon: '🏀' },
+  { label: 'Football', value: 'football', icon: '🏈' },
+  { label: 'Hockey', value: 'hockey', icon: '🏒' },
+];
+
 const SORTS = [
   { label: 'Newest', value: 'newest' },
-  { label: 'Top Rated', value: 'rating' },
+  { label: 'Popular', value: 'popular' },
   { label: 'Price ↑', value: 'price_asc' },
   { label: 'Price ↓', value: 'price_desc' },
 ];
 
-const POSITION_COLORS: Record<Position, string> = {
-  PG: '#7C3AED',
-  SG: '#2563EB',
-  SF: '#059669',
-  PF: '#D97706',
-  C:  '#DC2626',
+const GAME_COLORS: Record<string, string> = {
+  basketball: '#F97316',
+  football: '#10B981',
+  hockey: '#3B82F6',
 };
 
-function ratingColor(r: number) {
-  if (r >= 95) return '#FFD700';
-  if (r >= 90) return '#22C55E';
-  if (r >= 85) return '#3B82F6';
-  return '#94A3B8';
-}
-
-function BuildCard({ build, theme }: { build: Build; theme: typeof THEME.light }) {
+function BuildCard({ build, user }: { build: Build; user: ReturnType<typeof useAuthStore.getState>['user'] }) {
+  const { colorScheme } = useColorScheme();
+  const t = THEME[colorScheme ?? 'light'];
   const router = useRouter();
+
+  const compat = user && user.playstyle_vector ? calcCompatibility(user, build) : null;
+  const matchColor = compat ? getMatchColor(compat.score) : '#94A3B8';
+  const gameColor = GAME_COLORS[build.game_type] || '#7C3AED';
+
   return (
     <Pressable
       onPress={() => router.push(`/build/${build.id}`)}
       style={{
-        backgroundColor: theme.card,
-        borderRadius: 16,
-        marginBottom: 12,
+        backgroundColor: t.card, borderRadius: 16, marginBottom: 14,
+        borderWidth: 1, borderColor: t.border,
+        shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 10, elevation: 3,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: theme.border,
-        shadowColor: '#000',
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 2 },
-        elevation: 2,
       }}>
-      {/* Header bar */}
-      <View
-        style={{
-          backgroundColor: POSITION_COLORS[build.position],
-          paddingHorizontal: 16,
-          paddingVertical: 10,
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.25)',
-              borderRadius: 6,
-              paddingHorizontal: 8,
-              paddingVertical: 3,
-            }}>
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>{build.position}</Text>
+      {/* Top bar */}
+      <View style={{ backgroundColor: gameColor, padding: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+            {build.featured && (
+              <View style={{ backgroundColor: '#FFD700', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                <Text style={{ color: '#000', fontSize: 10, fontWeight: '800' }}>FEATURED</Text>
+              </View>
+            )}
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{build.position.toUpperCase()}</Text>
+            </View>
           </View>
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>{build.name}</Text>
+          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }} numberOfLines={1}>{build.title}</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>{build.archetype} • by {build.seller?.username}</Text>
         </View>
-        <View
-          style={{
-            backgroundColor: ratingColor(build.overallRating),
-            borderRadius: 20,
-            width: 40,
-            height: 40,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-          <Text style={{ color: '#000', fontWeight: '900', fontSize: 15 }}>{build.overallRating}</Text>
+        <View style={{ alignItems: 'flex-end', gap: 4 }}>
+          <Text style={{ color: '#fff', fontWeight: '900', fontSize: 20 }}>${build.price.toFixed(2)}</Text>
+          {build.avg_rating && (
+            <Text style={{ color: '#FFD700', fontSize: 12 }}>{'★'.repeat(Math.round(build.avg_rating))} {build.avg_rating}</Text>
+          )}
         </View>
       </View>
 
       {/* Body */}
-      <View style={{ padding: 14 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-          <View>
-            <Text style={{ color: theme.mutedForeground, fontSize: 11, marginBottom: 2 }}>ARCHETYPE</Text>
-            <Text style={{ color: theme.foreground, fontWeight: '600', fontSize: 13 }}>{build.archetype}</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ color: theme.mutedForeground, fontSize: 11, marginBottom: 2 }}>HEIGHT / WT</Text>
-            <Text style={{ color: theme.foreground, fontWeight: '600', fontSize: 13 }}>
-              {build.height} · {build.weight} lbs
-            </Text>
-          </View>
-        </View>
-
-        {/* Key stats */}
+      <View style={{ padding: 12 }}>
+        {/* Performance stats */}
         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
           {[
-            { label: '3PT', val: build.attributes.threePointer },
-            { label: 'BH', val: build.attributes.ballHandling },
-            { label: 'SPD', val: build.attributes.speed },
-            { label: 'DEF', val: build.attributes.perimeterDefense },
-            { label: 'BLK', val: build.attributes.block },
+            { label: 'Win Rate', val: `${build.performance?.win_rate || 0}%` },
+            { label: 'Efficiency', val: `${build.performance?.shot_efficiency || 0}%` },
+            { label: 'Avg Grade', val: build.performance?.avg_grade || 'N/A' },
+            { label: 'Mode', val: build.performance?.mode_played || 'N/A' },
           ].map((s) => (
-            <View
-              key={s.label}
-              style={{
-                flex: 1,
-                backgroundColor: theme.muted,
-                borderRadius: 8,
-                alignItems: 'center',
-                paddingVertical: 6,
-              }}>
-              <Text style={{ color: theme.mutedForeground, fontSize: 10, marginBottom: 2 }}>{s.label}</Text>
-              <Text style={{ color: theme.foreground, fontWeight: '700', fontSize: 14 }}>{s.val}</Text>
+            <View key={s.label} style={{ flex: 1, backgroundColor: t.muted, borderRadius: 8, padding: 7, alignItems: 'center' }}>
+              <Text style={{ color: t.mutedForeground, fontSize: 9, marginBottom: 2 }}>{s.label.toUpperCase()}</Text>
+              <Text style={{ color: t.foreground, fontWeight: '700', fontSize: 12 }} numberOfLines={1}>{s.val}</Text>
             </View>
           ))}
         </View>
 
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ color: theme.mutedForeground, fontSize: 12 }}>by {build.sellerName}</Text>
-          <Text style={{ color: '#7C3AED', fontWeight: '800', fontSize: 18 }}>
-            {build.price.toLocaleString()} VC
-          </Text>
-        </View>
+        {/* Badges */}
+        {build.badges?.length > 0 && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
+            {build.badges.slice(0, 4).map((badge) => (
+              <View key={badge} style={{ backgroundColor: '#EDE9FE', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                <Text style={{ color: '#7C3AED', fontSize: 11, fontWeight: '600' }}>{badge}</Text>
+              </View>
+            ))}
+            {build.badges.length > 4 && (
+              <View style={{ backgroundColor: t.muted, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                <Text style={{ color: t.mutedForeground, fontSize: 11 }}>+{build.badges.length - 4} more</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Compatibility */}
+        {compat && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: t.border }}>
+            <View style={{ flex: 1 }}>
+              <View style={{ height: 5, backgroundColor: t.muted, borderRadius: 3 }}>
+                <View style={{ height: 5, backgroundColor: matchColor, borderRadius: 3, width: `${compat.score}%` }} />
+              </View>
+            </View>
+            <Text style={{ color: matchColor, fontWeight: '800', fontSize: 13 }}>⭐ {compat.score}% Match</Text>
+          </View>
+        )}
       </View>
     </Pressable>
   );
@@ -143,127 +124,97 @@ function BuildCard({ build, theme }: { build: Build; theme: typeof THEME.light }
 
 export default function MarketplaceScreen() {
   const { colorScheme } = useColorScheme();
-  const theme = THEME[colorScheme ?? 'light'];
+  const t = THEME[colorScheme ?? 'light'];
+  const user = useAuthStore((s) => s.user);
 
   const [builds, setBuilds] = useState<Build[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [position, setPosition] = useState<Position | 'ALL'>('ALL');
+  const [gameType, setGameType] = useState<GameType | 'all'>('all');
   const [sort, setSort] = useState('newest');
   const [search, setSearch] = useState('');
+  const [stats, setStats] = useState<{ total_builds: number; total_users: number; total_sales: number } | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const data = await api.getBuilds({
-        position: position === 'ALL' ? undefined : position,
-        sort,
-      });
+      const [data, s] = await Promise.all([
+        buildsApi.list({
+          game_type: gameType === 'all' ? undefined : gameType,
+          sort,
+          search: search || undefined,
+        }),
+        statsApi.get(),
+      ]);
       setBuilds(data);
+      setStats(s);
     } catch {
       // silent
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [position, sort]);
+  }, [gameType, sort, search]);
 
   useEffect(() => {
     setLoading(true);
     load();
   }, [load]);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    load();
-  };
-
-  const filtered = search.trim()
-    ? builds.filter(
-        (b) =>
-          b.name.toLowerCase().includes(search.toLowerCase()) ||
-          b.archetype.toLowerCase().includes(search.toLowerCase()) ||
-          b.sellerName.toLowerCase().includes(search.toLowerCase())
-      )
-    : builds;
-
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <View style={{ flex: 1, backgroundColor: t.background }}>
       {/* Header */}
-      <View
-        style={{
-          backgroundColor: '#7C3AED',
-          paddingTop: 56,
-          paddingBottom: 16,
-          paddingHorizontal: 20,
-        }}>
-        <Text style={{ color: '#fff', fontWeight: '900', fontSize: 26 }}>2K26 Marketplace</Text>
-        <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 2 }}>
-          Buy & sell elite builds
-        </Text>
-
+      <View style={{ backgroundColor: '#7C3AED', paddingTop: 56, paddingBottom: 16, paddingHorizontal: 20 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+          <View>
+            <Text style={{ color: '#fff', fontWeight: '900', fontSize: 24 }}>Sports Builds Market</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, marginTop: 2 }}>
+              {stats ? `${stats.total_builds} builds • ${stats.total_sales} sold` : 'Buy & sell elite templates'}
+            </Text>
+          </View>
+          {user?.playstyle_vector && (
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
+              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>⚡ Scan Active</Text>
+            </View>
+          )}
+        </View>
         {/* Search */}
-        <View
-          style={{
-            backgroundColor: 'rgba(255,255,255,0.15)',
-            borderRadius: 12,
-            marginTop: 14,
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 12,
-          }}>
-          <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 16, marginRight: 6 }}>🔍</Text>
+        <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 }}>
+          <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 15, marginRight: 6 }}>🔍</Text>
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder="Search builds, archetypes..."
+            placeholder="Search builds, positions..."
             placeholderTextColor="rgba(255,255,255,0.5)"
             style={{ flex: 1, color: '#fff', paddingVertical: 10, fontSize: 14 }}
           />
         </View>
       </View>
 
-      {/* Position filter */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}>
-        {POSITIONS.map((p) => (
+      {/* Filters */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 10, gap: 8 }}>
+        {GAME_TYPES.map((g) => (
           <Pressable
-            key={p}
-            onPress={() => setPosition(p)}
+            key={g.value}
+            onPress={() => setGameType(g.value)}
             style={{
-              backgroundColor: position === p ? '#7C3AED' : theme.muted,
-              borderRadius: 20,
-              paddingHorizontal: 16,
-              paddingVertical: 7,
+              flexDirection: 'row', alignItems: 'center', gap: 4,
+              backgroundColor: gameType === g.value ? '#7C3AED' : t.muted,
+              borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7,
             }}>
-            <Text
-              style={{
-                color: position === p ? '#fff' : theme.mutedForeground,
-                fontWeight: '700',
-                fontSize: 13,
-              }}>
-              {p}
-            </Text>
+            <Text style={{ fontSize: 13 }}>{g.icon}</Text>
+            <Text style={{ color: gameType === g.value ? '#fff' : t.mutedForeground, fontWeight: '700', fontSize: 13 }}>{g.label}</Text>
           </Pressable>
         ))}
-        <View style={{ width: 1, backgroundColor: theme.border, marginHorizontal: 4 }} />
+        <View style={{ width: 1, backgroundColor: t.border, marginHorizontal: 4 }} />
         {SORTS.map((s) => (
           <Pressable
             key={s.value}
             onPress={() => setSort(s.value)}
             style={{
-              backgroundColor: sort === s.value ? '#1E1B4B' : theme.muted,
-              borderRadius: 20,
-              paddingHorizontal: 14,
-              paddingVertical: 7,
+              backgroundColor: sort === s.value ? '#1E1B4B' : t.muted,
+              borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7,
             }}>
-            <Text
-              style={{
-                color: sort === s.value ? '#fff' : theme.mutedForeground,
-                fontWeight: '600',
-                fontSize: 12,
-              }}>
+            <Text style={{ color: sort === s.value ? '#fff' : t.mutedForeground, fontWeight: '600', fontSize: 12 }}>
               {s.label}
             </Text>
           </Pressable>
@@ -276,18 +227,16 @@ export default function MarketplaceScreen() {
         </View>
       ) : (
         <FlatList
-          data={filtered}
+          data={builds}
           keyExtractor={(b) => b.id}
-          renderItem={({ item }) => <BuildCard build={item} theme={theme} />}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7C3AED" />}
+          renderItem={({ item }) => <BuildCard build={item} user={user} />}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 80 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor="#7C3AED" />}
           ListEmptyComponent={
             <View style={{ alignItems: 'center', marginTop: 60 }}>
-              <Text style={{ fontSize: 40, marginBottom: 12 }}>🏀</Text>
-              <Text style={{ color: theme.foreground, fontSize: 18, fontWeight: '700' }}>No builds found</Text>
-              <Text style={{ color: theme.mutedForeground, fontSize: 14, marginTop: 6 }}>
-                Try adjusting your filters
-              </Text>
+              <Text style={{ fontSize: 48, marginBottom: 12 }}>🏆</Text>
+              <Text style={{ color: t.foreground, fontSize: 18, fontWeight: '700' }}>No builds found</Text>
+              <Text style={{ color: t.mutedForeground, fontSize: 14, marginTop: 6 }}>Try adjusting your filters</Text>
             </View>
           }
         />
