@@ -68,7 +68,12 @@ function BuildCard({ build, user }: { build: Build; user: ReturnType<typeof useA
             </View>
           </View>
           <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }} numberOfLines={1}>{build.title}</Text>
-          <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>{build.archetype} • by {build.seller?.username}</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>{build.archetype} • by {build.seller?.username}</Text>
+            {(build.height_in || build.weight_lbs) && (
+              <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2 }}>
+                {[fmtHeight(build.height_in), build.weight_lbs ? `${build.weight_lbs} lbs` : null].filter(Boolean).join(' • ')}
+              </Text>
+            )}
         </View>
         <View style={{ alignItems: 'flex-end', gap: 4 }}>
           <Text style={{ color: '#fff', fontWeight: '900', fontSize: 20 }}>${build.price.toFixed(2)}</Text>
