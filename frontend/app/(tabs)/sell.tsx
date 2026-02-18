@@ -1,405 +1,421 @@
-import { api } from '@/lib/api';
-import { THEME } from '@/lib/theme';
-import type { BuildAttributes, Position } from '@/lib/types';
-import { useRouter } from 'expo-router';
-import { useColorScheme } from 'nativewind';
 import { useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
+  View, Text, Pressable, ScrollView, TextInput,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useColorScheme } from 'nativewind';
+import { THEME } from '@/lib/theme';
+import { buildsApi } from '@/lib/api';
+import { useAuthStore } from '@/lib/store';
+import type { GameType, BuildAttribute } from '@/lib/types';
+import { PLAYSTYLE_DIMENSIONS } from '@/lib/compatibility';
 
-const CURRENT_USER = { id: 'user1', name: 'MyPlayer2K' };
-
-const POSITIONS: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
-
-const ARCHETYPES: Record<Position, string[]> = {
-  PG: ['Playmaker', 'Pure Sharpshooter', 'Slasher', 'Two-Way Playmaker', 'Athletic Finisher'],
-  SG: ['Pure Sharpshooter', 'Slasher', 'Two-Way Sharpshooter', 'Playmaker', 'Athletic Finisher'],
-  SF: ['Slasher', 'Two-Way Finisher', 'Sharpshooter', 'Playmaker', 'Athletic Finisher'],
-  PF: ['Glass Cleaner', 'Slasher', 'Stretch Four', 'Two-Way Finisher', 'Playmaker'],
-  C: ['Glass Cleaner', 'Interior Scorer', 'Stretch Five', 'Two-Way Center', 'Playmaker'],
-};
-
-const HEIGHTS: Record<Position, string[]> = {
-  PG: ['5\'10"', '5\'11"', '6\'0"', '6\'1"', '6\'2"', '6\'3"'],
-  SG: ['6\'2"', '6\'3"', '6\'4"', '6\'5"', '6\'6"', '6\'7"'],
-  SF: ['6\'5"', '6\'6"', '6\'7"', '6\'8"', '6\'9"'],
-  PF: ['6\'7"', '6\'8"', '6\'9"', '6\'10"', '6\'11"'],
-  C: ['6\'10"', '6\'11"', '7\'0"', '7\'1"', '7\'2"', '7\'3"'],
-};
-
-const ATTR_GROUPS: { label: string; keys: (keyof BuildAttributes)[] }[] = [
-  { label: 'Athleticism', keys: ['speed', 'acceleration', 'verticalLeap', 'strength', 'stamina'] },
-  { label: 'Offense', keys: ['ballHandling', 'passAccuracy', 'threePointer', 'midRange', 'layup', 'dunkPower'] },
-  { label: 'Defense', keys: ['interiorDefense', 'perimeterDefense', 'steal', 'block'] },
-  { label: 'Rebounding', keys: ['offensiveRebound', 'defensiveRebound'] },
+const GAME_TYPES: { label: string; value: GameType; icon: string }[] = [
+  { label: 'Basketball', value: 'basketball', icon: '🏀' },
+  { label: 'Football', value: 'football', icon: '🏈' },
+  { label: 'Hockey', value: 'hockey', icon: '🏒' },
 ];
 
-const ATTR_DISPLAY: Record<keyof BuildAttributes, string> = {
-  speed: 'Speed',
-  acceleration: 'Acceleration',
-  verticalLeap: 'Vertical Leap',
-  strength: 'Strength',
-  stamina: 'Stamina',
-  ballHandling: 'Ball Handling',
-  passAccuracy: 'Pass Accuracy',
-  threePointer: 'Three Pointer',
-  midRange: 'Mid-Range',
-  layup: 'Layup',
-  dunkPower: 'Dunk Power',
-  interiorDefense: 'Interior Defense',
-  perimeterDefense: 'Perimeter Defense',
-  steal: 'Steal',
-  block: 'Block',
-  offensiveRebound: 'Off. Rebound',
-  defensiveRebound: 'Def. Rebound',
+const BASKETBALL_ATTRS = ['Speed', 'Acceleration', 'Ball Handling', '3-Point Shot', 'Mid-Range Shot', 'Layup', 'Dunk Power', 'Pass Accuracy', 'Interior Defense', 'Perimeter Defense', 'Steal', 'Block', 'Strength', 'Vertical', 'Stamina'];
+const FOOTBALL_ATTRS = ['Speed', 'Acceleration', 'Strength', 'Agility', 'Throw Power', 'Throw Accuracy', 'Catch', 'Route Running', 'Ball Carrier Vision', 'Tackle', 'Coverage', 'Stamina'];
+const HOCKEY_ATTRS = ['Speed', 'Acceleration', 'Skating', 'Slap Shot Power', 'Wrist Shot Accuracy', 'Stickhandling', 'Passing', 'Checking', 'Defensive Awareness', 'Endurance'];
+
+const ATTR_LISTS: Record<GameType, string[]> = {
+  basketball: BASKETBALL_ATTRS,
+  football: FOOTBALL_ATTRS,
+  hockey: HOCKEY_ATTRS,
 };
-
-const DEFAULT_ATTRS: BuildAttributes = {
-  speed: 65, acceleration: 65, verticalLeap: 65, strength: 65, stamina: 65,
-  ballHandling: 65, passAccuracy: 65, threePointer: 65, midRange: 65,
-  layup: 65, dunkPower: 65, interiorDefense: 65, perimeterDefense: 65,
-  steal: 65, block: 65, offensiveRebound: 65, defensiveRebound: 65,
-};
-
-function attrColor(v: number) {
-  if (v >= 90) return '#22C55E';
-  if (v >= 75) return '#3B82F6';
-  if (v >= 60) return '#F59E0B';
-  return '#EF4444';
-}
-
-function AttrRow({
-  label, value, onChange, theme,
-}: {
-  label: string; value: number; onChange: (v: number) => void;
-  theme: typeof THEME.light;
-}) {
-  return (
-    <View style={{ marginBottom: 12 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-        <Text style={{ color: theme.foreground, fontSize: 13 }}>{label}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Pressable
-            onPress={() => onChange(Math.max(25, value - 1))}
-            style={{
-              backgroundColor: theme.muted, borderRadius: 6,
-              width: 28, height: 28, alignItems: 'center', justifyContent: 'center',
-            }}>
-            <Text style={{ color: theme.foreground, fontWeight: '700', fontSize: 16, lineHeight: 18 }}>−</Text>
-          </Pressable>
-          <Text style={{ color: attrColor(value), fontWeight: '800', fontSize: 16, minWidth: 26, textAlign: 'center' }}>
-            {value}
-          </Text>
-          <Pressable
-            onPress={() => onChange(Math.min(99, value + 1))}
-            style={{
-              backgroundColor: theme.muted, borderRadius: 6,
-              width: 28, height: 28, alignItems: 'center', justifyContent: 'center',
-            }}>
-            <Text style={{ color: theme.foreground, fontWeight: '700', fontSize: 16, lineHeight: 18 }}>+</Text>
-          </Pressable>
-        </View>
-      </View>
-      <View style={{ backgroundColor: theme.muted, borderRadius: 4, height: 5 }}>
-        <View
-          style={{
-            backgroundColor: attrColor(value),
-            borderRadius: 4, height: 5,
-            width: `${((value - 25) / 74) * 100}%`,
-          }}
-        />
-      </View>
-    </View>
-  );
-}
 
 export default function SellScreen() {
   const { colorScheme } = useColorScheme();
-  const theme = THEME[colorScheme ?? 'light'];
+  const t = THEME[colorScheme ?? 'light'];
   const router = useRouter();
+  const { token, user } = useAuthStore();
 
-  const [name, setName] = useState('');
-  const [position, setPosition] = useState<Position>('PG');
-  const [archetype, setArchetype] = useState(ARCHETYPES['PG'][0]);
-  const [height, setHeight] = useState(HEIGHTS['PG'][2]);
-  const [weight, setWeight] = useState('185');
-  const [price, setPrice] = useState('10000');
-  const [description, setDescription] = useState('');
-  const [attributes, setAttributes] = useState<BuildAttributes>({ ...DEFAULT_ATTRS });
+  const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  const setAttr = (key: keyof BuildAttributes, val: number) => {
-    setAttributes((prev) => ({ ...prev, [key]: val }));
+  // Form state
+  const [gameType, setGameType] = useState<GameType>('basketball');
+  const [title, setTitle] = useState('');
+  const [position, setPosition] = useState('');
+  const [archetype, setArchetype] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('4.99');
+  const [importCode, setImportCode] = useState('');
+  const [badges, setBadges] = useState<string[]>([]);
+  const [badgeInput, setBadgeInput] = useState('');
+  const [attributes, setAttributes] = useState<BuildAttribute[]>([]);
+  const [buildVector, setBuildVector] = useState<number[]>(Array(8).fill(5));
+
+  // Performance
+  const [winRate, setWinRate] = useState('55');
+  const [modePlayed, setModePlayed] = useState('');
+  const [avgGrade, setAvgGrade] = useState('A');
+  const [shotEfficiency, setShotEfficiency] = useState('48');
+  const [patchVersion, setPatchVersion] = useState('1.0');
+
+  const attrList = ATTR_LISTS[gameType];
+
+  const getAttrValue = (key: string) => {
+    const found = attributes.find((a) => a.key === key);
+    return found ? String(found.value) : '75';
   };
 
-  const handlePositionChange = (p: Position) => {
-    setPosition(p);
-    setArchetype(ARCHETYPES[p][0]);
-    setHeight(HEIGHTS[p][Math.floor(HEIGHTS[p].length / 2)]);
+  const setAttrValue = (key: string, value: string) => {
+    setAttributes((prev) => {
+      const filtered = prev.filter((a) => a.key !== key);
+      return [...filtered, { key, value: parseInt(value) || 75 }];
+    });
   };
 
-  const validate = (): string | null => {
-    if (!name.trim()) return 'Build name is required';
-    if (!description.trim()) return 'Description is required';
-    const w = parseInt(weight);
-    if (isNaN(w) || w < 100 || w > 350) return 'Weight must be between 100-350 lbs';
-    const p = parseInt(price);
-    if (isNaN(p) || p < 1000) return 'Price must be at least 1,000 VC';
-    return null;
+  const addBadge = () => {
+    const b = badgeInput.trim();
+    if (b && !badges.includes(b)) {
+      setBadges((prev) => [...prev, b]);
+      setBadgeInput('');
+    }
   };
+
+  const removeBadge = (b: string) => setBadges((prev) => prev.filter((x) => x !== b));
 
   const handleSubmit = async () => {
-    const err = validate();
-    if (err) { Alert.alert('Validation Error', err); return; }
+    if (!token) { router.push('/auth/login'); return; }
+    if (!title || !position || !archetype || !price) { setError('Please fill in all required fields'); return; }
+    const priceNum = parseFloat(price);
+    if (isNaN(priceNum) || priceNum < 1 || priceNum > 10) { setError('Price must be between $1 and $10'); return; }
+
+    // Ensure all attrs are filled
+    const finalAttrs: BuildAttribute[] = attrList.map((key) => ({
+      key,
+      value: parseInt(getAttrValue(key)) || 75,
+    }));
 
     setSubmitting(true);
+    setError('');
     try {
-      await api.createBuild({
-        sellerId: CURRENT_USER.id,
-        sellerName: CURRENT_USER.name,
-        name: name.trim(),
+      await buildsApi.create(token, {
+        title,
+        game_type: gameType,
         position,
         archetype,
-        height,
-        weight: parseInt(weight),
-        price: parseInt(price),
-        description: description.trim(),
-        attributes,
+        description: description || undefined,
+        price: priceNum,
+        import_code: importCode || undefined,
+        build_vector: buildVector,
+        attributes: finalAttrs,
+        badges,
+        performance: {
+          win_rate: parseFloat(winRate) || 50,
+          mode_played: modePlayed,
+          avg_grade: avgGrade,
+          shot_efficiency: parseFloat(shotEfficiency) || 48,
+          patch_version: patchVersion,
+        },
       });
-      Alert.alert('Listed!', 'Your build is now on the marketplace.', [
-        { text: 'View Marketplace', onPress: () => router.replace('/(tabs)') },
+      Alert.alert('Build Submitted!', 'Your build is pending admin review. You\'ll be notified once approved.', [
+        { text: 'View My Builds', onPress: () => router.push('/(tabs)/dashboard') },
       ]);
-      setName('');
-      setDescription('');
-      setWeight('185');
-      setPrice('10000');
-      setAttributes({ ...DEFAULT_ATTRS });
-      setPosition('PG');
-      setArchetype(ARCHETYPES['PG'][0]);
     } catch (e: unknown) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to create listing');
+      setError(e instanceof Error ? e.message : 'Failed to submit build');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const inputStyle = {
-    backgroundColor: theme.muted,
-    borderRadius: 10,
-    padding: 12,
-    color: theme.foreground,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: theme.border,
-  };
+  if (!user) {
+    return (
+      <View style={{ flex: 1, backgroundColor: t.background, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <Text style={{ color: t.foreground, fontSize: 18, fontWeight: '700', marginBottom: 16 }}>Sign in to sell builds</Text>
+        <Pressable onPress={() => router.push('/auth/login')} style={{ backgroundColor: '#7C3AED', borderRadius: 12, padding: 14, paddingHorizontal: 24 }}>
+          <Text style={{ color: '#fff', fontWeight: '700' }}>Sign In</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const steps = ['Game & Info', 'Attributes', 'Performance', 'Build DNA', 'Review'];
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      {/* Header */}
-      <View style={{ backgroundColor: '#7C3AED', paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20 }}>
-        <Text style={{ color: '#fff', fontWeight: '900', fontSize: 26 }}>List a Build</Text>
-        <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 2 }}>
-          Set up your 2K26 build for sale
-        </Text>
-      </View>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView style={{ flex: 1, backgroundColor: t.background }}>
+        {/* Header */}
+        <View style={{ backgroundColor: '#7C3AED', paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20 }}>
+          <Text style={{ color: '#fff', fontWeight: '900', fontSize: 24, marginBottom: 4 }}>List a Build</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>Earn 70% of every sale</Text>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
-        {/* Build Name */}
-        <Text style={{ color: theme.mutedForeground, fontSize: 11, fontWeight: '700', marginBottom: 6 }}>
-          BUILD NAME
-        </Text>
-        <TextInput
-          value={name}
-          onChangeText={setName}
-          placeholder="e.g. Elite Sharpshooter"
-          placeholderTextColor={theme.mutedForeground}
-          style={[inputStyle, { marginBottom: 20 }]}
-        />
-
-        {/* Position */}
-        <Text style={{ color: theme.mutedForeground, fontSize: 11, fontWeight: '700', marginBottom: 8 }}>
-          POSITION
-        </Text>
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
-          {POSITIONS.map((p) => (
-            <Pressable
-              key={p}
-              onPress={() => handlePositionChange(p)}
-              style={{
-                flex: 1,
-                backgroundColor: position === p ? '#7C3AED' : theme.muted,
-                borderRadius: 10,
-                paddingVertical: 10,
-                alignItems: 'center',
-                borderWidth: 1,
-                borderColor: position === p ? '#7C3AED' : theme.border,
-              }}>
-              <Text style={{ color: position === p ? '#fff' : theme.foreground, fontWeight: '700', fontSize: 13 }}>
-                {p}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Archetype */}
-        <Text style={{ color: theme.mutedForeground, fontSize: 11, fontWeight: '700', marginBottom: 8 }}>
-          ARCHETYPE
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8, marginBottom: 20 }}>
-          {ARCHETYPES[position].map((a) => (
-            <Pressable
-              key={a}
-              onPress={() => setArchetype(a)}
-              style={{
-                backgroundColor: archetype === a ? '#1E1B4B' : theme.muted,
-                borderRadius: 20,
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                borderWidth: 1,
-                borderColor: archetype === a ? '#7C3AED' : theme.border,
-              }}>
-              <Text style={{ color: archetype === a ? '#fff' : theme.foreground, fontWeight: '600', fontSize: 13 }}>
-                {a}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        {/* Height */}
-        <Text style={{ color: theme.mutedForeground, fontSize: 11, fontWeight: '700', marginBottom: 8 }}>
-          HEIGHT
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8, marginBottom: 20 }}>
-          {HEIGHTS[position].map((h) => (
-            <Pressable
-              key={h}
-              onPress={() => setHeight(h)}
-              style={{
-                backgroundColor: height === h ? '#7C3AED' : theme.muted,
-                borderRadius: 10,
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-                borderWidth: 1,
-                borderColor: height === h ? '#7C3AED' : theme.border,
-              }}>
-              <Text style={{ color: height === h ? '#fff' : theme.foreground, fontWeight: '600', fontSize: 13 }}>
-                {h}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        {/* Weight & Price */}
-        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: theme.mutedForeground, fontSize: 11, fontWeight: '700', marginBottom: 6 }}>
-              WEIGHT (lbs)
-            </Text>
-            <TextInput
-              value={weight}
-              onChangeText={setWeight}
-              keyboardType="numeric"
-              placeholder="185"
-              placeholderTextColor={theme.mutedForeground}
-              style={inputStyle}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: theme.mutedForeground, fontSize: 11, fontWeight: '700', marginBottom: 6 }}>
-              PRICE (VC)
-            </Text>
-            <TextInput
-              value={price}
-              onChangeText={setPrice}
-              keyboardType="numeric"
-              placeholder="10000"
-              placeholderTextColor={theme.mutedForeground}
-              style={inputStyle}
-            />
-          </View>
-        </View>
-
-        {/* Description */}
-        <Text style={{ color: theme.mutedForeground, fontSize: 11, fontWeight: '700', marginBottom: 6 }}>
-          DESCRIPTION
-        </Text>
-        <TextInput
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Describe your build's strengths and playstyle..."
-          placeholderTextColor={theme.mutedForeground}
-          multiline
-          numberOfLines={3}
-          style={[inputStyle, { marginBottom: 24, minHeight: 80, textAlignVertical: 'top' }]}
-        />
-
-        {/* Attributes */}
-        <Text style={{ color: theme.foreground, fontWeight: '800', fontSize: 18, marginBottom: 16 }}>
-          Attributes
-        </Text>
-
-        {ATTR_GROUPS.map((group) => (
-          <View
-            key={group.label}
-            style={{
-              backgroundColor: theme.card,
-              borderRadius: 14,
-              padding: 16,
-              marginBottom: 16,
-              borderWidth: 1,
-              borderColor: theme.border,
-            }}>
-            <Text style={{ color: '#7C3AED', fontWeight: '700', fontSize: 13, marginBottom: 14, letterSpacing: 0.5 }}>
-              {group.label.toUpperCase()}
-            </Text>
-            {group.keys.map((key) => (
-              <AttrRow
-                key={key}
-                label={ATTR_DISPLAY[key]}
-                value={attributes[key]}
-                onChange={(v) => setAttr(key, v)}
-                theme={theme}
-              />
+          {/* Step indicators */}
+          <View style={{ flexDirection: 'row', marginTop: 16, gap: 4 }}>
+            {steps.map((s, i) => (
+              <Pressable key={s} onPress={() => setStep(i + 1)} style={{ flex: 1, alignItems: 'center' }}>
+                <View style={{ height: 3, borderRadius: 2, backgroundColor: step > i ? '#fff' : 'rgba(255,255,255,0.3)', marginBottom: 4, width: '100%' }} />
+                <Text style={{ color: step > i ? '#fff' : 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: '600' }}>{s}</Text>
+              </Pressable>
             ))}
           </View>
-        ))}
+        </View>
 
-        {/* Submit */}
-        <Pressable
-          onPress={handleSubmit}
-          disabled={submitting}
-          style={{
-            backgroundColor: submitting ? theme.muted : '#7C3AED',
-            borderRadius: 14,
-            paddingVertical: 18,
-            alignItems: 'center',
-            marginTop: 8,
-          }}>
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 17 }}>
-              List Build for {parseInt(price || '0').toLocaleString()} VC
-            </Text>
+        <View style={{ padding: 20 }}>
+          {error ? (
+            <View style={{ backgroundColor: '#FEE2E2', borderRadius: 10, padding: 12, marginBottom: 16 }}>
+              <Text style={{ color: '#DC2626' }}>{error}</Text>
+            </View>
+          ) : null}
+
+          {/* Step 1: Game & Basic Info */}
+          {step === 1 && (
+            <View style={{ gap: 16 }}>
+              <Text style={{ color: t.foreground, fontWeight: '800', fontSize: 18 }}>Game Type & Details</Text>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                {GAME_TYPES.map((g) => (
+                  <Pressable
+                    key={g.value}
+                    onPress={() => setGameType(g.value)}
+                    style={{
+                      flex: 1, borderRadius: 12, padding: 14, alignItems: 'center',
+                      borderWidth: 2,
+                      borderColor: gameType === g.value ? '#7C3AED' : t.border,
+                      backgroundColor: gameType === g.value ? '#EDE9FE' : t.card,
+                    }}>
+                    <Text style={{ fontSize: 24, marginBottom: 4 }}>{g.icon}</Text>
+                    <Text style={{ color: gameType === g.value ? '#7C3AED' : t.foreground, fontWeight: '700', fontSize: 13 }}>{g.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {[
+                { label: 'Build Title *', val: title, set: setTitle, placeholder: 'e.g. Elite Guard Shooter Template' },
+                { label: 'Position *', val: position, set: setPosition, placeholder: 'e.g. Point Guard, Wide Receiver...' },
+                { label: 'Archetype / Style *', val: archetype, set: setArchetype, placeholder: 'e.g. Pure Shooter, Balanced, Physical...' },
+              ].map((f) => (
+                <View key={f.label}>
+                  <Text style={{ color: t.mutedForeground, fontSize: 13, marginBottom: 6 }}>{f.label}</Text>
+                  <TextInput
+                    value={f.val}
+                    onChangeText={f.set}
+                    placeholder={f.placeholder}
+                    placeholderTextColor={t.mutedForeground}
+                    style={{ backgroundColor: t.muted, borderRadius: 10, padding: 14, color: t.foreground, fontSize: 15, borderWidth: 1, borderColor: t.border }}
+                  />
+                </View>
+              ))}
+
+              <View>
+                <Text style={{ color: t.mutedForeground, fontSize: 13, marginBottom: 6 }}>Description</Text>
+                <TextInput
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="Describe your build, playstyle, best use cases..."
+                  placeholderTextColor={t.mutedForeground}
+                  multiline numberOfLines={4}
+                  style={{ backgroundColor: t.muted, borderRadius: 10, padding: 14, color: t.foreground, fontSize: 14, minHeight: 100, textAlignVertical: 'top', borderWidth: 1, borderColor: t.border }}
+                />
+              </View>
+
+              <View>
+                <Text style={{ color: t.mutedForeground, fontSize: 13, marginBottom: 6 }}>Price ($1.00 – $10.00) *</Text>
+                <TextInput
+                  value={price}
+                  onChangeText={setPrice}
+                  keyboardType="decimal-pad"
+                  placeholder="4.99"
+                  placeholderTextColor={t.mutedForeground}
+                  style={{ backgroundColor: t.muted, borderRadius: 10, padding: 14, color: t.foreground, fontSize: 15, borderWidth: 1, borderColor: t.border }}
+                />
+              </View>
+
+              <View>
+                <Text style={{ color: t.mutedForeground, fontSize: 13, marginBottom: 6 }}>Import Code (JSON)</Text>
+                <TextInput
+                  value={importCode}
+                  onChangeText={setImportCode}
+                  placeholder='{"build": {...}}'
+                  placeholderTextColor={t.mutedForeground}
+                  multiline numberOfLines={3}
+                  style={{ backgroundColor: t.muted, borderRadius: 10, padding: 14, color: t.foreground, fontSize: 13, minHeight: 80, textAlignVertical: 'top', borderWidth: 1, borderColor: t.border, fontFamily: 'monospace' }}
+                />
+              </View>
+
+              {/* Badges */}
+              <View>
+                <Text style={{ color: t.mutedForeground, fontSize: 13, marginBottom: 6 }}>Badges</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                  <TextInput
+                    value={badgeInput}
+                    onChangeText={setBadgeInput}
+                    placeholder="Add a badge..."
+                    placeholderTextColor={t.mutedForeground}
+                    style={{ flex: 1, backgroundColor: t.muted, borderRadius: 10, padding: 12, color: t.foreground, fontSize: 14, borderWidth: 1, borderColor: t.border }}
+                  />
+                  <Pressable onPress={addBadge} style={{ backgroundColor: '#7C3AED', borderRadius: 10, padding: 12, justifyContent: 'center' }}>
+                    <Text style={{ color: '#fff', fontWeight: '700' }}>Add</Text>
+                  </Pressable>
+                </View>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {badges.map((b) => (
+                    <Pressable key={b} onPress={() => removeBadge(b)} style={{ backgroundColor: '#EDE9FE', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Text style={{ color: '#7C3AED', fontSize: 13 }}>{b}</Text>
+                      <Text style={{ color: '#7C3AED', fontSize: 13 }}>×</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            </View>
           )}
-        </Pressable>
+
+          {/* Step 2: Attributes */}
+          {step === 2 && (
+            <View style={{ gap: 14 }}>
+              <Text style={{ color: t.foreground, fontWeight: '800', fontSize: 18, marginBottom: 4 }}>Set Attributes</Text>
+              <Text style={{ color: t.mutedForeground, fontSize: 13, marginBottom: 8 }}>Rate each attribute from 25–99</Text>
+              {attrList.map((attr) => {
+                const val = getAttrValue(attr);
+                const numVal = parseInt(val) || 75;
+                const barColor = numVal >= 90 ? '#10B981' : numVal >= 75 ? '#3B82F6' : numVal >= 60 ? '#F59E0B' : '#EF4444';
+                return (
+                  <View key={attr}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={{ color: t.foreground, fontSize: 14 }}>{attr}</Text>
+                      <TextInput
+                        value={val}
+                        onChangeText={(v) => setAttrValue(attr, v)}
+                        keyboardType="number-pad"
+                        maxLength={2}
+                        style={{ backgroundColor: t.muted, borderRadius: 6, padding: 4, paddingHorizontal: 8, color: barColor, fontWeight: '700', fontSize: 14, minWidth: 40, textAlign: 'center', borderWidth: 1, borderColor: t.border }}
+                      />
+                    </View>
+                    <View style={{ height: 5, backgroundColor: t.muted, borderRadius: 3 }}>
+                      <View style={{ height: 5, backgroundColor: barColor, borderRadius: 3, width: `${Math.min(100, (numVal / 99) * 100)}%` }} />
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Step 3: Performance */}
+          {step === 3 && (
+            <View style={{ gap: 16 }}>
+              <Text style={{ color: t.foreground, fontWeight: '800', fontSize: 18 }}>Verified Performance Data</Text>
+              <View style={{ backgroundColor: '#FEF9C3', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#FDE047' }}>
+                <Text style={{ color: '#854D0E', fontSize: 13 }}>
+                  📋 Honest data required. Our admin team reviews all submissions. False stats will be rejected.
+                </Text>
+              </View>
+              {[
+                { label: 'Win Rate % *', val: winRate, set: setWinRate, placeholder: '55', keyboard: 'decimal-pad' as const },
+                { label: 'Mode Played *', val: modePlayed, set: setModePlayed, placeholder: 'Online Ranked, Rec, etc.' },
+                { label: 'Average Grade (A/B/C) *', val: avgGrade, set: setAvgGrade, placeholder: 'A' },
+                { label: 'Shot / Play Efficiency % *', val: shotEfficiency, set: setShotEfficiency, placeholder: '48', keyboard: 'decimal-pad' as const },
+                { label: 'Patch Version *', val: patchVersion, set: setPatchVersion, placeholder: 'e.g. 1.5' },
+              ].map((f) => (
+                <View key={f.label}>
+                  <Text style={{ color: t.mutedForeground, fontSize: 13, marginBottom: 6 }}>{f.label}</Text>
+                  <TextInput
+                    value={f.val}
+                    onChangeText={f.set}
+                    placeholder={f.placeholder}
+                    placeholderTextColor={t.mutedForeground}
+                    keyboardType={f.keyboard}
+                    style={{ backgroundColor: t.muted, borderRadius: 10, padding: 14, color: t.foreground, fontSize: 15, borderWidth: 1, borderColor: t.border }}
+                  />
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Step 4: Build DNA (playstyle vector) */}
+          {step === 4 && (
+            <View style={{ gap: 16 }}>
+              <Text style={{ color: t.foreground, fontWeight: '800', fontSize: 18 }}>Build DNA</Text>
+              <Text style={{ color: t.mutedForeground, fontSize: 13 }}>
+                Rate this build's playstyle. This powers the compatibility matching engine.
+              </Text>
+              {PLAYSTYLE_DIMENSIONS.map((dim, i) => (
+                <View key={dim.key} style={{ backgroundColor: t.card, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: t.border }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <Text style={{ color: t.mutedForeground, fontSize: 11, flex: 1 }}>{dim.low}</Text>
+                    <Text style={{ color: '#7C3AED', fontWeight: '800', fontSize: 16, marginHorizontal: 12 }}>{buildVector[i]}</Text>
+                    <Text style={{ color: t.mutedForeground, fontSize: 11, flex: 1, textAlign: 'right' }}>{dim.high}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 4 }}>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => (
+                      <Pressable
+                        key={v}
+                        onPress={() => {
+                          const next = [...buildVector];
+                          next[i] = v;
+                          setBuildVector(next);
+                        }}
+                        style={{
+                          flex: 1, height: 32, borderRadius: 5,
+                          backgroundColor: buildVector[i] >= v ? '#7C3AED' : t.muted,
+                          alignItems: 'center', justifyContent: 'center',
+                        }}>
+                        <Text style={{ color: buildVector[i] >= v ? '#fff' : t.mutedForeground, fontSize: 10, fontWeight: '700' }}>{v}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Step 5: Review & Submit */}
+          {step === 5 && (
+            <View style={{ gap: 14 }}>
+              <Text style={{ color: t.foreground, fontWeight: '800', fontSize: 18 }}>Review & Submit</Text>
+
+              <View style={{ backgroundColor: t.card, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: t.border }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <Text style={{ color: t.foreground, fontWeight: '800', fontSize: 16 }}>{title || 'Untitled Build'}</Text>
+                  <Text style={{ color: '#7C3AED', fontWeight: '800', fontSize: 18 }}>${price}</Text>
+                </View>
+                <Text style={{ color: t.mutedForeground, fontSize: 13, marginBottom: 4 }}>{gameType} • {position} • {archetype}</Text>
+                <Text style={{ color: t.mutedForeground, fontSize: 12, marginBottom: 12 }}>{badges.length} badges • {attrList.length} attributes</Text>
+
+                <View style={{ backgroundColor: '#EDE9FE', borderRadius: 10, padding: 12 }}>
+                  <Text style={{ color: '#7C3AED', fontWeight: '700', fontSize: 14 }}>💰 Your Earnings</Text>
+                  <Text style={{ color: '#7C3AED', fontSize: 13, marginTop: 4 }}>
+                    You receive 70% = ${(parseFloat(price || '0') * 0.7).toFixed(2)} per sale
+                  </Text>
+                  <Text style={{ color: '#9CA3AF', fontSize: 11 }}>Platform fee: 30% = ${(parseFloat(price || '0') * 0.3).toFixed(2)}</Text>
+                </View>
+              </View>
+
+              <View style={{ backgroundColor: '#FEF9C3', borderRadius: 10, padding: 12 }}>
+                <Text style={{ color: '#854D0E', fontSize: 12, lineHeight: 18 }}>
+                  By submitting, you confirm this build is your original work and the performance data is accurate.
+                  Your listing will be live once reviewed by our admin team.
+                </Text>
+              </View>
+
+              <Pressable
+                onPress={handleSubmit}
+                disabled={submitting}
+                style={{ backgroundColor: '#7C3AED', borderRadius: 14, padding: 18, alignItems: 'center' }}>
+                {submitting ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '800', fontSize: 17 }}>Submit for Review</Text>}
+              </Pressable>
+            </View>
+          )}
+
+          {/* Navigation */}
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 20, marginBottom: 40 }}>
+            {step > 1 && (
+              <Pressable onPress={() => setStep(step - 1)} style={{ flex: 1, backgroundColor: t.muted, borderRadius: 12, padding: 14, alignItems: 'center' }}>
+                <Text style={{ color: t.foreground, fontWeight: '700' }}>← Previous</Text>
+              </Pressable>
+            )}
+            {step < 5 && (
+              <Pressable onPress={() => setStep(step + 1)} style={{ flex: 1, backgroundColor: '#7C3AED', borderRadius: 12, padding: 14, alignItems: 'center' }}>
+                <Text style={{ color: '#fff', fontWeight: '700' }}>Next →</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
