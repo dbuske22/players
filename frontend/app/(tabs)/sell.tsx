@@ -298,36 +298,38 @@ export default function SellScreen() {
             </View>
           )}
 
-          {/* Step 3: Performance */}
-          {step === 3 && (
-            <View style={{ gap: 16 }}>
-              <Text style={{ color: t.foreground, fontWeight: '800', fontSize: 18 }}>Verified Performance Data</Text>
-              <View style={{ backgroundColor: '#FEF9C3', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#FDE047' }}>
-                <Text style={{ color: '#854D0E', fontSize: 13 }}>
-                  📋 Honest data required. Our admin team reviews all submissions. False stats will be rejected.
-                </Text>
-              </View>
-              {[
-                { label: 'Win Rate % *', val: winRate, set: setWinRate, placeholder: '55', keyboard: 'decimal-pad' as const },
-                { label: 'Mode Played *', val: modePlayed, set: setModePlayed, placeholder: 'Online Ranked, Rec, etc.' },
-                { label: 'Average Grade (A/B/C) *', val: avgGrade, set: setAvgGrade, placeholder: 'A' },
-                { label: 'Shot / Play Efficiency % *', val: shotEfficiency, set: setShotEfficiency, placeholder: '48', keyboard: 'decimal-pad' as const },
-                { label: 'Patch Version *', val: patchVersion, set: setPatchVersion, placeholder: 'e.g. 1.5' },
-              ].map((f) => (
-                <View key={f.label}>
-                  <Text style={{ color: t.mutedForeground, fontSize: 13, marginBottom: 6 }}>{f.label}</Text>
-                  <TextInput
-                    value={f.val}
-                    onChangeText={f.set}
-                    placeholder={f.placeholder}
-                    placeholderTextColor={t.mutedForeground}
-                    keyboardType={f.keyboard}
-                    style={{ backgroundColor: t.muted, borderRadius: 10, padding: 14, color: t.foreground, fontSize: 15, borderWidth: 1, borderColor: t.border }}
-                  />
+            {/* Step 3: Performance */}
+            {step === 3 && (
+              <View style={{ gap: 16 }}>
+                <Text style={{ color: t.foreground, fontWeight: '800', fontSize: 18 }}>Verified Performance Data</Text>
+                <View style={{ backgroundColor: '#FEF9C3', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#FDE047' }}>
+                  <Text style={{ color: '#854D0E', fontSize: 13 }}>
+                    📋 Honest data required. Our admin team reviews all submissions. False stats will be rejected.
+                  </Text>
                 </View>
-              ))}
-            </View>
-          )}
+                {[
+                  { label: 'Speed (1–99) *', val: perfSpeed, set: setPerfSpeed, placeholder: '75', desc: 'How fast your player moves' },
+                  { label: 'Shooting (1–99) *', val: perfShooting, set: setPerfShooting, placeholder: '75', desc: 'Scoring ability from range' },
+                  { label: 'Defense (1–99) *', val: perfDefense, set: setPerfDefense, placeholder: '75', desc: 'Perimeter & on-ball defense' },
+                  { label: 'Playmaking (1–99) *', val: perfPlaymaking, set: setPerfPlaymaking, placeholder: '75', desc: 'Ball handling, passing, creation' },
+                  { label: 'Athleticism (1–99) *', val: perfAthleticism, set: setPerfAthleticism, placeholder: '75', desc: 'Vertical, strength, stamina' },
+                  { label: 'Patch Version *', val: patchVersion, set: setPatchVersion, placeholder: '2K26', desc: 'Game patch this was tested on' },
+                ].map((f) => (
+                  <View key={f.label}>
+                    <Text style={{ color: t.mutedForeground, fontSize: 13, marginBottom: 2 }}>{f.label}</Text>
+                    <Text style={{ color: t.mutedForeground, fontSize: 11, marginBottom: 6 }}>{f.desc}</Text>
+                    <TextInput
+                      value={f.val}
+                      onChangeText={f.set}
+                      placeholder={f.placeholder}
+                      placeholderTextColor={t.mutedForeground}
+                      keyboardType={f.label.includes('Patch') ? 'default' : 'decimal-pad'}
+                      style={{ backgroundColor: t.muted, borderRadius: 10, padding: 14, color: t.foreground, fontSize: 15, borderWidth: 1, borderColor: t.border }}
+                    />
+                  </View>
+                ))}
+              </View>
+            )}
 
           {/* Step 4: Build DNA (playstyle vector) */}
           {step === 4 && (
