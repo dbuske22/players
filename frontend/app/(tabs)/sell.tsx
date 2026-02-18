@@ -12,9 +12,9 @@ import type { GameType, BuildAttribute } from '@/lib/types';
 import { PLAYSTYLE_DIMENSIONS } from '@/lib/compatibility';
 
 const GAME_TYPES: { label: string; value: GameType; icon: string }[] = [
-  { label: 'Basketball', value: 'basketball', icon: '🏀' },
-  { label: 'Football', value: 'football', icon: '🏈' },
-  { label: 'Hockey', value: 'hockey', icon: '🏒' },
+  { label: 'Basketball Sim', value: 'basketball', icon: '🏀' },
+  { label: 'Football Sim', value: 'football', icon: '🏈' },
+  { label: 'Hockey Sim', value: 'hockey', icon: '🏒' },
 ];
 
 const BASKETBALL_ATTRS = ['Speed', 'Acceleration', 'Ball Handling', '3-Point Shot', 'Mid-Range Shot', 'Layup', 'Dunk Power', 'Pass Accuracy', 'Interior Defense', 'Perimeter Defense', 'Steal', 'Block', 'Strength', 'Vertical', 'Stamina'];
@@ -86,7 +86,7 @@ export default function SellScreen() {
     if (!token) { router.push('/auth/login'); return; }
     if (!title || !position || !archetype || !price) { setError('Please fill in all required fields'); return; }
     const priceNum = parseFloat(price);
-    if (isNaN(priceNum) || priceNum < 3.99 || priceNum > 7.99) { setError('Price must be between $3.99 and $7.99'); return; }
+    if (isNaN(priceNum) || priceNum < 1 || priceNum > 10) { setError('Price must be between $1.00 and $10.00'); return; }
 
     // Ensure all attrs are filled
     const finalAttrs: BuildAttribute[] = attrList.map((key) => ({
@@ -218,7 +218,7 @@ export default function SellScreen() {
               </View>
 
               <View>
-                  <Text style={{ color: t.mutedForeground, fontSize: 13, marginBottom: 6 }}>Price ($3.99 – $7.99) *</Text>
+                  <Text style={{ color: t.mutedForeground, fontSize: 13, marginBottom: 6 }}>Price ($1.00 – $10.00) *</Text>
                 <TextInput
                   value={price}
                   onChangeText={setPrice}
@@ -378,7 +378,7 @@ export default function SellScreen() {
                   <Text style={{ color: t.foreground, fontWeight: '800', fontSize: 16 }}>{title || 'Untitled Build'}</Text>
                   <Text style={{ color: '#7C3AED', fontWeight: '800', fontSize: 18 }}>${price}</Text>
                 </View>
-                <Text style={{ color: t.mutedForeground, fontSize: 13, marginBottom: 4 }}>{gameType} • {position} • {archetype}</Text>
+                    <Text style={{ color: t.mutedForeground, fontSize: 13, marginBottom: 4 }}>{gameType === 'basketball' ? 'Basketball' : gameType === 'football' ? 'Football' : 'Hockey'} Sim • {position} • {archetype}</Text>
                 <Text style={{ color: t.mutedForeground, fontSize: 12, marginBottom: 12 }}>{badges.length} badges • {attrList.length} attributes</Text>
 
                 <View style={{ backgroundColor: '#EDE9FE', borderRadius: 10, padding: 12 }}>
