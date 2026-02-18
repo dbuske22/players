@@ -1,6 +1,6 @@
 {
   "installCommand": "npm install -g bun && bun install && cd backend && bun install",
-  "buildCommand": "cd frontend && bunx expo export --platform web || echo 'expo export failed, continuing'; cd .. && ./backend/node_modules/.bin/esbuild api/index.ts --inject:api/polyfill.ts --bundle --platform=node --target=node18 --format=cjs --external:fsevents --outfile=api/bundle.js",
+  "buildCommand": "cd frontend && bunx expo export --platform web || true",
   "outputDirectory": "frontend/dist",
   "functions": {
     "api/bundle.js": {
