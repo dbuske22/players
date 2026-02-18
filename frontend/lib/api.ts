@@ -9,7 +9,10 @@ import type {
   GameType,
 } from './types';
 
-const BASE = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:3002';
+const BASE = process.env.EXPO_PUBLIC_BACKEND_URL ||
+  (typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+    ? '/api'
+    : 'http://localhost:3002');
 
 async function request<T>(
   path: string,
