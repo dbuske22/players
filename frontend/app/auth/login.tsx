@@ -42,7 +42,7 @@ export default function LoginScreen() {
           <Text style={{ fontSize: 36, marginBottom: 8 }}>🏆</Text>
           <Text style={{ color: '#fff', fontWeight: '900', fontSize: 28, textAlign: 'center' }}>Sports Builds Market</Text>
           <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 14, marginTop: 4, textAlign: 'center' }}>
-            Buy & sell elite player build templates
+              Elite player build templates for every sport
           </Text>
         </View>
 
