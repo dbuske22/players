@@ -23,28 +23,36 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Marketplace',
-          tabBarIcon: ({ color, size }) => <ShoppingBagIcon color={color} size={size} />,
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+            <ShoppingBagIcon color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="sell"
         options={{
           title: 'Sell Build',
-          tabBarIcon: ({ color, size }) => <PlusCircleIcon color={color} size={size} />,
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+            <PlusCircleIcon color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="my-builds"
         options={{
           title: 'My Builds',
-          tabBarIcon: ({ color, size }) => <BookmarkIcon color={color} size={size} />,
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+            <BookmarkIcon color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => <UserIcon color={color} size={size} />,
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+            <UserIcon color={color} size={size} />
+          ),
         }}
       />
     </Tabs>
