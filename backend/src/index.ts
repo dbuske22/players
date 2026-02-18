@@ -362,7 +362,6 @@ app.post('/builds/:id/checkout', authMiddleware, async (c) => {
       .single();
 
     await db.from('builds').update({ status: 'sold' }).eq('id', build.id);
-    await db.from('users').update({ total_spent: db.rpc as never }).eq('id', userId);
 
     return c.json({ demo: true, purchase, message: 'Demo purchase completed (Stripe not configured)' });
   }
