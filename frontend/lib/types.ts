@@ -63,6 +63,8 @@ export interface Build {
   build_vector: number[] | null;
   attributes: BuildAttribute[];
   badges: string[];
+  badge_count?: number;
+  attribute_count?: number;
   performance: BuildPerformance;
   status: BuildStatus;
   featured: boolean;
